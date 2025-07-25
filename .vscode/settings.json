@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "*.c": "c",
+        "select.h": "c",
+        "daemon.h": "c",
+        "stdio.h": "c"
+    }
+}

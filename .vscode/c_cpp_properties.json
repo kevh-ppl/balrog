@@ -1,22 +1,24 @@
 {
-  "configurations": [
-    {
-      "name": "Balrog",
-      "includePath": [
-        "${workspaceFolder}/**",
-        "/usr/src/linux-headers-6.1.0-37-amd64/include",
-        "/usr/include",
-        "/usr/include/x86_64-linux-gnu",
-        "/usr/local/include"
-      ],
-      "defines": [
-        "__KERNEL__",
-        "MODULE"
-      ],
-      "compilerPath": "/usr/bin/gcc",
-      "cStandard": "gnu99",
-      "intelliSenseMode": "linux-gcc-x64"
-    }
-  ],
-  "version": 4
+    "configurations": [
+        {
+            "name": "Balrog",
+            "includePath": [
+                "${workspaceFolder}",
+                "/usr/src/linux-headers-6.1.0-37-amd64/include",
+                "/usr/include",
+                "/usr/include/x86_64-linux-gnu",
+                "/usr/local/include"
+            ],
+            "defines": [
+                "__KERNEL__",
+                "MODULE",
+                "DAEMON_VERSION_STR",
+                "DAEMON_NAME"
+            ],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "gnu99",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
 }
