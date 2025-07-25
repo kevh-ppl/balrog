@@ -1,4 +1,8 @@
 {
+    "editor.formatOnSave": true,  // formatea al guardar
+    "[c]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools" // usa clang-format para C
+    },
     "files.associations": {
         "*.c": "c",
         "select.h": "c",
