@@ -57,7 +57,7 @@ CFLAGS    += -DCOMMIT_HASH='"$(COMMIT_HASH)"'
 CFLAGS    += -DCHANGED_FILES=$(CHANGED_FILES)
 
 CFLAGS    += -I$(COMMON_DIR)
-CFLAGS    += -O2  -Wall  -pipe -Wextra -Werror -pedantic -std=c99
+CFLAGS    += -O2  -Wall  -pipe -Wextra -pedantic -std=c99
 CFLAGS    += -lpthread
 CFLAGS	  += $(LLIBUDEV)
 

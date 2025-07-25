@@ -9,6 +9,8 @@
 
 #include <stddef.h>  //for null
 
+#define F_TLOCK 2  // file lock type, used in lockf()
+
 #define DAEMON_NAME "balrog"
 
 #define DAEMON_DEF_TO_STR_(text) #text

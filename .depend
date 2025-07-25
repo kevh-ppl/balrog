@@ -1,0 +1,2 @@
+.depend balrog.o balrog_debug.o: balrog.c daemon.h
+.depend daemon.o daemon_debug.o: daemon.c daemon.h
