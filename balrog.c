@@ -1,25 +1,24 @@
 #include <libudev.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/select.h>
+#include <time.h>
+#include <unistd.h>
 
 #include "balrog_udev.h"
+#include "cmd_opt.h"
 #include "daemon.h"
 
-// Define the help string for balrog-usb-utility
-static const char *help_str = DAEMON_NAME
-    "\n"
-    " Version: " DAEMON_VERSION_STR
-    "\n\n"
-#ifdef DEBUG
-    " Build mode: debug\n"
-#else
-    " Build mode: release\n"
-#endif
-    " Build date: " __DATE__
-    "\n"
-    " Build time: " __TIME__
-    "\n"
-    " Options:                      description:\n\n"
-    "  -v,  --version              Display version\n"
-    "  -h,  --help                 Display this help\n\n";
+int main(int argc, char *argv[]) {
+    processing_cmd(argc, argv);
+    daemonize2(init_cmd_line, NULL);
 
-int main() { do_enumerate(); }
+    while (!daemon_info.terminated) {
+        // Here а routine of daemon
+
+        printf("%s: daemon is run\n", DAEMON_NAME);
+        sleep(10);
+    }
+
+    return EXIT_SUCCESS;  // good job (we interrupted (finished) main loop)
+}
