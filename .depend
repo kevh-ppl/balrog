@@ -1,2 +1,3 @@
-.depend balrog.o balrog_debug.o: balrog.c daemon.h
+.depend balrog.o balrog_debug.o: balrog.c balrog_udev.h daemon.h
+.depend balrog_udev.o balrog_udev_debug.o: balrog_udev.c balrog_udev.h
 .depend daemon.o daemon_debug.o: daemon.c daemon.h
