@@ -1,6 +1,0 @@
-.depend balrog.o balrog_debug.o: balrog.c balrog_udev.h cmd_opt.h \
- daemon.h
-.depend balrog_udev.o balrog_udev_debug.o: balrog_udev.c balrog_udev.h
-.depend cmd_opt.o cmd_opt_debug.o: cmd_opt.c cmd_opt.h balrog_udev.h \
- daemon.h
-.depend daemon.o daemon_debug.o: daemon.c daemon.h

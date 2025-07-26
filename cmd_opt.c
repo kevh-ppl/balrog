@@ -36,38 +36,52 @@ const char *help_str = DAEMON_NAME
     "\n"
     " Build time: " __TIME__
     "\n"
-    " Options:                      description:\n\n"
-    "  -v,  --version              Display version\n"
-    "  -h,  --help                 Display this help\n\n";
+    " Options:                          description:\n\n"
+    "       --no_chdir                  Don't change the directory to '/'\n"
+    "       --no_fork                   Don't do fork\n"
+    "       --no_close                  Don't close standart IO files\n"
+    "       --pid_file [value]          Set pid file name\n"
+    "       --log_file_path [value]     Set log file name\n"
+    "       --cmd_pipe [value]          Set CMD Pipe name\n"
+    "  -e,  --enumerate                 Enumerates all block (storage) devices\n"
+    "  -m,  --start-monitor             Starts monitoring USB devices related IO events\n"
+    "  -w,  --stop-monitor              Stops monitoring USB devices related IO events\n"
+    "  -v,  --version                   Display version\n"
+    "  -h,  --help                      Display this help\n\n";
 
 enum {
     cmd_opt_help = 'h',
     cmd_opt_version = 'v',
     cmd_enumerate = 'e',
+    cmd_start_monitor = 'm',
+    cmd_stop_monitor = 'w',
 
     // daemon options
-    cmd_opt_no_chdir = '--no_chdir',
-    cmd_opt_no_fork = '--no_fork',
-    cmd_opt_no_close = '--no_close',
-    cmd_opt_pid_file = '--pid_file',
-    cmd_opt_log_file = '--log_file_path',
-    cmd_opt_cmd_pipe = '--cmd_pipe'
+    cmd_opt_no_chdir,
+    cmd_opt_no_fork,
+    cmd_opt_no_close,
+    cmd_opt_pid_file,
+    cmd_opt_log_file,
+    cmd_opt_cmd_pipe
 };
 
-static const char *short_opts = "hve";
-static const struct option long_opts[] = {{"version", no_argument, NULL, cmd_opt_version},
-                                          {"help", no_argument, NULL, cmd_opt_help},
-                                          {'enumerate', no_argument, NULL, cmd_enumerate},
+static const char *short_opts = "hvemw";
+static const struct option long_opts[] = {
+    {"version", no_argument, NULL, cmd_opt_version},
+    {"help", no_argument, NULL, cmd_opt_help},
+    {"enumerate", no_argument, NULL, cmd_enumerate},
+    {"start-monitor", no_argument, NULL, cmd_start_monitor},
+    {"stop-monitor", no_argument, NULL, cmd_stop_monitor},
 
-                                          // daemon options
-                                          {"no_chdir", no_argument, NULL, cmd_opt_no_chdir},
-                                          {"no_fork", no_argument, NULL, cmd_opt_no_fork},
-                                          {"no_close", no_argument, NULL, cmd_opt_no_close},
-                                          {"pid_file", required_argument, NULL, cmd_opt_pid_file},
-                                          {"log_file", required_argument, NULL, cmd_opt_log_file},
-                                          {"cmd_pipe", required_argument, NULL, cmd_opt_cmd_pipe},
+    // daemon options
+    {"no_chdir", no_argument, NULL, cmd_opt_no_chdir},
+    {"no_fork", no_argument, NULL, cmd_opt_no_fork},
+    {"no_close", no_argument, NULL, cmd_opt_no_close},
+    {"pid_file", required_argument, NULL, cmd_opt_pid_file},
+    {"log_file_path", required_argument, NULL, cmd_opt_log_file},
+    {"cmd_pipe", required_argument, NULL, cmd_opt_cmd_pipe},
 
-                                          {NULL, no_argument, NULL, 0}};
+    {NULL, no_argument, NULL, 0}};
 
 static void daemon_exit_handler(int sig) {
     // Here we release resources
@@ -112,9 +126,20 @@ void processing_cmd(int argc, char *argv[]) {
                 break;
 
             case cmd_enumerate:
-                // Here we can enumerate devices or something else
                 puts("Enumerating devices...\n");
                 do_enumerate();
+                exit_if_not_daemonized(EXIT_SUCCESS);
+                break;
+
+            case cmd_start_monitor:
+                puts("Starting to monitor USB IO events...\n");
+                start_monitoring();
+                exit_if_not_daemonized(EXIT_SUCCESS);
+                break;
+
+            case cmd_stop_monitor:
+                puts("Stops to monitor USB IO events...\n");
+                stop_monitoring();
                 exit_if_not_daemonized(EXIT_SUCCESS);
                 break;
 
@@ -199,4 +224,5 @@ void init_cmd_line(void *data) {
         daemon_error_exit("Can't create thread_cmd_pipe: %m\n");
 
     // Here is your code to initialize
+    start_monitoring();
 }

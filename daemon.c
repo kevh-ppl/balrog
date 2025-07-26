@@ -100,6 +100,22 @@ int redirect_stdio_to_devnull(void) {
     return 0;
 }
 
+int redirect_stdio_to_logfile(const char *log_path) {
+    int log_fd = open(log_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (log_fd < 0) {
+        perror("open log file failed");
+        return -1;
+    }
+
+    // Redirige stdout y stderr
+    dup2(log_fd, STDOUT_FILENO);
+    dup2(log_fd, STDERR_FILENO);
+
+    // Cierra el descriptor original (ya fue duplicado)
+    if (log_fd > 2) close(log_fd);
+    return 0;
+}
+
 int create_pid_file(const char *pid_file_name) {
     int fd;
     const int BUF_SIZE = 32;
@@ -189,6 +205,10 @@ void daemonize2(void (*optional_init)(void *), void *data) {
 
     if (daemon_info.pid_file && (create_pid_file(daemon_info.pid_file) == -1))
         daemon_error_exit("Can't create pid file: %s: %m\n", daemon_info.pid_file);
+
+    if (daemon_info.log_file && (redirect_stdio_to_logfile(daemon_info.log_file) == -1))
+        daemon_error_exit("Can't redirect stdout/stderr to log file %s: %m\n",
+                          daemon_info.log_file);
 
     // call user functions for the optional initialization
     // before closing the standardIO (STDIN, STDOUT, STDERR)
