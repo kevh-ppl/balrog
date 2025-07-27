@@ -107,12 +107,27 @@ int redirect_stdio_to_logfile(const char *log_path) {
         return -1;
     }
 
-    // Redirige stdout y stderr
-    dup2(log_fd, STDOUT_FILENO);
-    dup2(log_fd, STDERR_FILENO);
+    // Redirige stdout y stderr a nivel de descriptor de archivo
+    if (dup2(log_fd, STDOUT_FILENO) < 0 || dup2(log_fd, STDERR_FILENO) < 0) {
+        perror("dup2 log file failed");
+        close(log_fd);
+        return -1;
+    }
 
+    // Forzar flushing y sincronización de FILE * con los nuevos descriptores
+    fflush(stdout);
+    fflush(stderr);
+    // Esto asegura que los FILE* apunten al nuevo descriptor
+    // freopen reinicializa la estructura FILE * asociada con stdout y stderr
+    FILE *out = fdopen(STDOUT_FILENO, "ab");
+    if (out) setvbuf(out, NULL, _IOLBF, 0);  // Línea buffer para stdout
+
+    FILE *err = fdopen(STDERR_FILENO, "ab");
+    if (err) setvbuf(err, NULL, _IONBF, 0);  // Sin buffer para stderr
+
+    write(log_fd, "Daemon started\n", 15);  // Log the start of the daemon
     // Cierra el descriptor original (ya fue duplicado)
-    if (log_fd > 2) close(log_fd);
+    // if (log_fd > 2) close(log_fd);
     return 0;
 }
 

@@ -37,12 +37,12 @@ const char *help_str = DAEMON_NAME
     " Build time: " __TIME__
     "\n"
     " Options:                          description:\n\n"
-    "       --no_chdir                  Don't change the directory to '/'\n"
-    "       --no_fork                   Don't do fork\n"
-    "       --no_close                  Don't close standart IO files\n"
-    "       --pid_file [value]          Set pid file name\n"
-    "       --log_file_path [value]     Set log file name\n"
-    "       --cmd_pipe [value]          Set CMD Pipe name\n"
+    "       --no-chdir                  Don't change the directory to '/'\n"
+    "       --no-fork                   Don't do fork\n"
+    "       --no-close                  Don't close standart IO files\n"
+    "       --pid-file [value]          Set pid file name\n"
+    "       --log-file-path [value]     Set log file name\n"
+    "       --cm-pipe [value]           Set CMD Pipe name\n"
     "  -e,  --enumerate                 Enumerates all block (storage) devices\n"
     "  -m,  --start-monitor             Starts monitoring USB devices related IO events\n"
     "  -w,  --stop-monitor              Stops monitoring USB devices related IO events\n"
@@ -74,12 +74,12 @@ static const struct option long_opts[] = {
     {"stop-monitor", no_argument, NULL, cmd_stop_monitor},
 
     // daemon options
-    {"no_chdir", no_argument, NULL, cmd_opt_no_chdir},
-    {"no_fork", no_argument, NULL, cmd_opt_no_fork},
+    {"no-chdir", no_argument, NULL, cmd_opt_no_chdir},
+    {"no-fork", no_argument, NULL, cmd_opt_no_fork},
     {"no_close", no_argument, NULL, cmd_opt_no_close},
-    {"pid_file", required_argument, NULL, cmd_opt_pid_file},
-    {"log_file_path", required_argument, NULL, cmd_opt_log_file},
-    {"cmd_pipe", required_argument, NULL, cmd_opt_cmd_pipe},
+    {"pid-file", required_argument, NULL, cmd_opt_pid_file},
+    {"log-file-path", required_argument, NULL, cmd_opt_log_file},
+    {"cmd-pipe", required_argument, NULL, cmd_opt_cmd_pipe},
 
     {NULL, no_argument, NULL, 0}};
 
