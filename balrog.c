@@ -1,6 +1,7 @@
 #include <libudev.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/file.h>
 #include <sys/select.h>
 #include <time.h>
 #include <unistd.h>
@@ -13,6 +14,13 @@
 __attribute__((constructor)) void refresh_streams();
 
 int main(int argc, char *argv[]) {
+    int fd_cmd_pipe = open(daemon_info.cmd_pipe, O_RDWR);
+    if (fd_cmd_pipe != -1) {
+        puts("Ya demonizado...");
+        close(fd_cmd_pipe);
+        write_cmd_to_cmd_pipe(argc, argv);
+        return 0;
+    }
     processing_cmd(argc, argv);  // first use for initialize the daemon_info structure
     // init_cmd_line initializes the thread for the command pipe
     // and sets the signal handlers.

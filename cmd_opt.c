@@ -110,8 +110,20 @@ static void init_signals(void) {
     set_sig_handler(SIGHUP, SIG_IGN);
 }
 
+void write_cmd_to_cmd_pipe(int argc, char *argv[]) {
+    int fd_cmd_pipe = open(daemon_info.cmd_pipe, O_RDWR);
+    char cmd_line[PIPE_BUF] = {0};
+    for (int i = 1; i < argc; i++) {
+        strcat(cmd_line, argv[i]);
+        strcat(cmd_line, " ");
+    }
+    strcat(cmd_line, "\n");
+    write(fd_cmd_pipe, cmd_line, strlen(cmd_line));
+}
+
 void processing_cmd(int argc, char *argv[]) {
     int opt;
+    int fd_cmd_pipe = open(daemon_info.cmd_pipe, O_RDWR);
 
     // We use the processing_cmd function for processing the command line and
     // for commands from the DAEMON_CMD_PIPE_NAME
@@ -144,14 +156,15 @@ void processing_cmd(int argc, char *argv[]) {
                 break;
 
             case cmd_start_monitor:
-                puts("Starting to monitor USB IO events...");
+                puts("Starting to monitor USB devices...");
                 start_monitoring();
                 exit_if_not_daemonized(EXIT_SUCCESS);
                 break;
 
             case cmd_stop_monitor:
-                puts("Stops to monitor USB IO events...");
+                puts("Stopping to monitor USB devices...");
                 stop_monitoring();
+                printf("Monitor udev pointer value: %p", (void *)monitor);
                 exit_if_not_daemonized(EXIT_SUCCESS);
                 break;
 

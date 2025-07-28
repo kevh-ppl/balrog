@@ -5,8 +5,9 @@
 
 #define PIPE_BUF 4096
 
-// pthread_t pthread_cmd_pipe;
+extern pthread_t pthread_cmd_pipe;
 
+void write_cmd_to_cmd_pipe(int argc, char *argv[]);
 void processing_cmd(int argc, char *argv[]);
 void init_cmd_line(void *data);
 
