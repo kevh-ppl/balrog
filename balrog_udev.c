@@ -5,15 +5,18 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/select.h>
+#include <unistd.h>
 
-struct udev *udev;
-struct udev_enumerate *enumerator;
-struct udev_list_entry *devices, *dev_list_entry;
-struct udev_device *device_to_enumerate;
-struct udev_monitor *monitor;
+#include "daemon.h"
 
-static int init_udev_context() {
-    struct udev *udev = udev_new();  // declared in enumerate.h
+struct udev *udev = NULL;
+struct udev_enumerate *enumerator = NULL;
+struct udev_list_entry *devices = NULL, *dev_list_entry = NULL;
+struct udev_device *device_to_enumerate = NULL;
+struct udev_monitor *monitor = NULL;
+
+int init_udev_context() {
+    udev = udev_new();  // declared in enumerate.h
 
     if (!udev) {
         fprintf(stderr, "Failed to create udev context object\n");
@@ -130,31 +133,44 @@ void free_udev_enumerator() {
 // MONITOR
 
 static int create_udev_usb_monitor() {
-    struct udev_monitor *monitor = udev_monitor_new_from_netlink(udev, "udev");
+    if (!udev) {
+        fprintf(stderr, "Udev context is not initialized\n");
+        init_udev_context();
+    }
+    printf("FROM start_monitoring() -> create_udev_usb_monitor() con &udev: %p\n", (void *)udev);
+    monitor = udev_monitor_new_from_netlink(udev, "udev");
     if (!monitor) {
         fprintf(stderr, "Failded to create udev monitor\n");
         udev_monitor_unref(monitor);
         return -1;
     }
-    printf("Udev monitor created succesfully\n");
+    printf("Udev monitor created succesfully at: %p\n", (void *)monitor);
     // filter to only get block devices for the monitor
-    udev_monitor_filter_add_match_subsystem_devtype(monitor, "usb", NULL);
+    if (!udev_monitor_filter_add_match_subsystem_devtype(monitor, "usb", NULL)) {
+        // daemon_error_exit("Failed to add filter for udev monitor\n");
+        fprintf(stderr, "Failed to add filter for udev monitor\n");
+        printf("Continuing without filter...\n");
+    }
+
     return 0;
 }
 
 /*
-Starts monitoring
+Set the udev monitor to listen for events
+Returns the file descriptor for the monitor
 */
-int start_monitoring() {
-    if (!create_udev_usb_monitor()) {
+int set_monitor() {
+    if (create_udev_usb_monitor() < 0) {
         return -1;
     }
+    printf("udev => %p\n", (void *)udev);
     int enabled_receiving = udev_monitor_enable_receiving(monitor);
     if (enabled_receiving < 0) {
         fprintf(stderr, "Failed to enable receiving on udev monitor\n");
         udev_monitor_unref(monitor);
         return -1;
     }
+    printf("Enabled receiving...\n");
 
     int fd = udev_monitor_get_fd(monitor);
     if (fd < 0) {
@@ -162,32 +178,38 @@ int start_monitoring() {
         udev_monitor_unref(monitor);
         return -1;
     }
+    return fd;  // return the file descriptor for the monitor
+}
+
+/*
+Starts monitoring
+This is the task that will be run in the main loop
+*/
+int start_monitoring(int fd) {
     fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(fd, &fds);
 
-    while (1) {
-        FD_ZERO(&fds);
-        FD_SET(fd, &fds);
+    select(fd + 1, &fds, NULL, NULL, NULL);
 
-        select(fd + 1, &fds, NULL, NULL, NULL);
+    if (FD_ISSET(fd, &fds)) {
+        struct udev_device *dev = udev_monitor_receive_device(monitor);
+        if (dev) {
+            const char *action = udev_device_get_action(dev);
+            const char *node = udev_device_get_devnode(dev);
+            const char *subsystem = udev_device_get_subsystem(dev);
 
-        if (FD_ISSET(fd, &fds)) {
-            struct udev_device *dev = udev_monitor_receive_device(monitor);
-            if (dev) {
-                const char *action = udev_device_get_action(dev);
-                const char *node = udev_device_get_devnode(dev);
-                const char *subsystem = udev_device_get_subsystem(dev);
-
-                printf("[%s] %s (%s)\n", action, node, subsystem);
-                udev_device_unref(dev);
-            }
+            printf("[%s] %s (%s)\n", action, node, subsystem);
+            udev_device_unref(dev);
         }
     }
+
     return 0;  // This line is unreachable, but added to satisfy the function signature
 }
 
 /*
 Stops monitoring juasjuas
- */
+*/
 void stop_monitoring() { udev_monitor_unref(monitor); }
 
 // MONITOR

@@ -10,6 +10,8 @@ extern struct udev_list_entry *devices, *dev_list_entry;
 
 extern struct udev_monitor *monitor;
 
+int init_udev_context();
+
 void do_enumerate();
 void free_udev_enumerator();
 

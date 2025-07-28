@@ -1,3 +1,33 @@
-
-Daemon started
-Daemon started
+balrog: daemon is running
+udev => 0x561aeac3c3e0
+FROM start_monitoring() -> create_udev_usb_monitor() con &udev: 0x561aeac3c3e0
+Udev monitor created succesfully at: 0x561aeac3c580
+Failed to add filter for udev monitor
+Continuing without filter...
+udev => 0x561aeac3c3e0
+Enabled receiving...
+AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH desde start_monitoring()
+[unbind] (null) (usb)
+AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH desde start_monitoring()
+[remove] (null) (usb)
+AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH desde start_monitoring()
+[unbind] /dev/bus/usb/001/010 (usb)
+AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH desde start_monitoring()
+[remove] /dev/bus/usb/001/010 (usb)
+AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH desde start_monitoring()
+[add] /dev/bus/usb/001/011 (usb)
+AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH desde start_monitoring()
+[add] (null) (usb)
+AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH desde start_monitoring()
+[bind] (null) (usb)
+AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH desde start_monitoring()
+[bind] /dev/bus/usb/001/011 (usb)
+AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH desde start_monitoring()
+[unbind] (null) (usb)
+AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH desde start_monitoring()
+[remove] (null) (usb)
+AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH desde start_monitoring()
+[unbind] /dev/bus/usb/001/011 (usb)
+AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH desde start_monitoring()
+[remove] /dev/bus/usb/001/011 (usb)
+AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH desde start_monitoring()

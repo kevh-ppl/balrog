@@ -16,7 +16,10 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <syslog.h>
 #include <unistd.h>
+
+#include "balrog_udev.h"
 
 volatile struct daemon_info_t daemon_info = {
     // flag will be set in finale function daemonize()
@@ -63,7 +66,13 @@ volatile struct daemon_info_t daemon_info = {
 // Exit if the daemon is not daemonized
 // This is used to ensure that the daemon is running in the background
 void exit_if_not_daemonized(int exit_status) {
-    if (!daemon_info.daemonized) _exit(exit_status);
+    if (!daemon_info.daemonized) {
+        fprintf(stderr, "Daemon is not daemonized. Exiting with status %d\n", exit_status);
+        free_udev_enumerator();
+        stop_monitoring();
+        free_udev_context();
+        _exit(exit_status);
+    }
 }
 
 /*
@@ -81,6 +90,9 @@ void daemon_error_exit(const char *format, ...) {
         vfprintf(stderr, format, ap);
         va_end(ap);
     }
+    free_udev_enumerator();
+    stop_monitoring();
+    free_udev_context();
 
     _exit(EXIT_FAILURE);
 }
@@ -103,31 +115,33 @@ int redirect_stdio_to_devnull(void) {
 int redirect_stdio_to_logfile(const char *log_path) {
     int log_fd = open(log_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
     if (log_fd < 0) {
-        perror("open log file failed");
+        fprintf(stderr, "Error opening log file: %s\n", strerror(errno));
         return -1;
     }
 
     // Redirige stdout y stderr a nivel de descriptor de archivo
     if (dup2(log_fd, STDOUT_FILENO) < 0 || dup2(log_fd, STDERR_FILENO) < 0) {
-        perror("dup2 log file failed");
+        fprintf(stderr, "Error dup2: %s\n", strerror(errno));
         close(log_fd);
         return -1;
     }
 
-    // Forzar flushing y sincronización de FILE * con los nuevos descriptores
+    if (freopen(log_path, "a", stdout) == NULL || freopen(log_path, "a", stderr) == NULL) {
+        fprintf(stderr, "Error freopen: %s\n", strerror(errno));
+        close(log_fd);
+        return -1;
+    }
+
+    setvbuf(stdout, NULL, _IOLBF, 0);  // Línea buffer para stdout
+    setvbuf(stderr, NULL, _IONBF, 0);  // Sin buffer para stderr
+
     fflush(stdout);
     fflush(stderr);
-    // Esto asegura que los FILE* apunten al nuevo descriptor
-    // freopen reinicializa la estructura FILE * asociada con stdout y stderr
-    FILE *out = fdopen(STDOUT_FILENO, "ab");
-    if (out) setvbuf(out, NULL, _IOLBF, 0);  // Línea buffer para stdout
 
-    FILE *err = fdopen(STDERR_FILENO, "ab");
-    if (err) setvbuf(err, NULL, _IONBF, 0);  // Sin buffer para stderr
+    // write(log_fd, "Daemon started\n", 15);  // Log the start of the daemon
 
-    write(log_fd, "Daemon started\n", 15);  // Log the start of the daemon
     // Cierra el descriptor original (ya fue duplicado)
-    // if (log_fd > 2) close(log_fd);
+    if (log_fd > STDERR_FILENO) close(log_fd);
     return 0;
 }
 
@@ -221,9 +235,12 @@ void daemonize2(void (*optional_init)(void *), void *data) {
     if (daemon_info.pid_file && (create_pid_file(daemon_info.pid_file) == -1))
         daemon_error_exit("Can't create pid file: %s: %m\n", daemon_info.pid_file);
 
-    if (daemon_info.log_file && (redirect_stdio_to_logfile(daemon_info.log_file) == -1))
-        daemon_error_exit("Can't redirect stdout/stderr to log file %s: %m\n",
-                          daemon_info.log_file);
+    if (daemon_info.log_file) {
+        if (redirect_stdio_to_logfile(daemon_info.log_file) == -1) {
+            daemon_error_exit("Can't redirect stdout/stderr to log file %s: %m\n",
+                              daemon_info.log_file);
+        }
+    }
 
     // call user functions for the optional initialization
     // before closing the standardIO (STDIN, STDOUT, STDERR)

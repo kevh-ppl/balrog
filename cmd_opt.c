@@ -20,6 +20,9 @@
 #include "balrog_udev.h"
 #include "daemon.h"
 
+// Forzar reinicialización de streams
+__attribute__((constructor)) void refresh_streams();
+
 pthread_t pthread_cmd_pipe;
 
 // Define the help string for balrog-usb-utility
@@ -43,6 +46,7 @@ const char *help_str = DAEMON_NAME
     "       --pid-file [value]          Set pid file name\n"
     "       --log-file-path [value]     Set log file name\n"
     "       --cm-pipe [value]           Set CMD Pipe name\n"
+    "  -p,  --print-udev-vars           Print udev vars for debugging\n"
     "  -e,  --enumerate                 Enumerates all block (storage) devices\n"
     "  -m,  --start-monitor             Starts monitoring USB devices related IO events\n"
     "  -w,  --stop-monitor              Stops monitoring USB devices related IO events\n"
@@ -55,9 +59,10 @@ enum {
     cmd_enumerate = 'e',
     cmd_start_monitor = 'm',
     cmd_stop_monitor = 'w',
+    cmd_print_udev_vars = 'p',
 
-    // daemon options
-    cmd_opt_no_chdir,
+    // daemon options (start from a value outside ASCII range)
+    cmd_opt_no_chdir = 1000,
     cmd_opt_no_fork,
     cmd_opt_no_close,
     cmd_opt_pid_file,
@@ -65,20 +70,21 @@ enum {
     cmd_opt_cmd_pipe
 };
 
-static const char *short_opts = "hvemw";
+static const char *short_opts = "hvemwp";
 static const struct option long_opts[] = {
     {"version", no_argument, NULL, cmd_opt_version},
     {"help", no_argument, NULL, cmd_opt_help},
     {"enumerate", no_argument, NULL, cmd_enumerate},
     {"start-monitor", no_argument, NULL, cmd_start_monitor},
     {"stop-monitor", no_argument, NULL, cmd_stop_monitor},
+    {"print-udev-vars", no_argument, NULL, cmd_print_udev_vars},
 
     // daemon options
     {"no-chdir", no_argument, NULL, cmd_opt_no_chdir},
     {"no-fork", no_argument, NULL, cmd_opt_no_fork},
-    {"no_close", no_argument, NULL, cmd_opt_no_close},
+    {"no-close", no_argument, NULL, cmd_opt_no_close},
     {"pid-file", required_argument, NULL, cmd_opt_pid_file},
-    {"log-file-path", required_argument, NULL, cmd_opt_log_file},
+    {"log-file", required_argument, NULL, cmd_opt_log_file},
     {"cmd-pipe", required_argument, NULL, cmd_opt_cmd_pipe},
 
     {NULL, no_argument, NULL, 0}};
@@ -126,19 +132,25 @@ void processing_cmd(int argc, char *argv[]) {
                 break;
 
             case cmd_enumerate:
-                puts("Enumerating devices...\n");
+                puts("Enumerating devices...");
                 do_enumerate();
                 exit_if_not_daemonized(EXIT_SUCCESS);
                 break;
 
+            case cmd_print_udev_vars:
+                puts("Printing udev variables for debugging...");
+                printf("Udev context: %p\n", (void *)udev);
+                printf("Udev monitor: %p\n", (void *)monitor);
+                break;
+
             case cmd_start_monitor:
-                puts("Starting to monitor USB IO events...\n");
+                puts("Starting to monitor USB IO events...");
                 start_monitoring();
                 exit_if_not_daemonized(EXIT_SUCCESS);
                 break;
 
             case cmd_stop_monitor:
-                puts("Stops to monitor USB IO events...\n");
+                puts("Stops to monitor USB IO events...");
                 stop_monitoring();
                 exit_if_not_daemonized(EXIT_SUCCESS);
                 break;
@@ -224,5 +236,5 @@ void init_cmd_line(void *data) {
         daemon_error_exit("Can't create thread_cmd_pipe: %m\n");
 
     // Here is your code to initialize
-    start_monitoring();
+    // start_monitoring();
 }
