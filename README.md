@@ -1,5 +1,5 @@
 # Balrog
-### An attempt to learn about Linux/OSS programming. 
-### My idea is a utility that provides an easy all in one utility to protect your system from a USB vector attack.
+### First, this is an attempt to learn about Linux/OSS programming. 
+### Then, a simple all-in-one utility to protect your system (if I manage to finish it).
 
 Dios, ayúdame.
