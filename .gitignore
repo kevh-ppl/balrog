@@ -1,0 +1,27 @@
+# Archivos binarios
+balrog
+balrog_debug
+balrog_udev_debug
+
+# Objetos compilados
+*.o
+
+#
+*.pid
+
+# Archivos de backup y temporales
+# archivos de respaldo de editores
+*~
+*.swp
+*.swo
+*.bak
+
+# Archivos de log
+*.log
+
+# Archivos de compilación automáticos
+Makefile.deps
+
+# Archivos específicos del entorno
+.DS_Store
+
