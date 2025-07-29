@@ -1,11 +1,11 @@
 balrog: daemon is running
-udev => 0x55d3982483e0
-FROM start_monitoring() -> create_udev_usb_monitor() con &udev: 0x55d3982483e0
-Udev monitor created succesfully at: 0x55d398248580
+udev => 0x55c939c003e0
+FROM start_monitoring() -> create_udev_usb_monitor() con &udev: 0x55c939c003e0
+Udev monitor created succesfully at: 0x55c939c00580
 Failed to add filter for udev monitor
 Continuing without filter...
-udev => 0x55d3982483e0
+udev => 0x55c939c003e0
 Enabled receiving...
 Printing udev variables for debugging...
-Udev context: 0x55d3982483e0
-Udev monitor: 0x55d398248580
+Udev context: 0x55c939c003e0
+Udev monitor: 0x55c939c00580

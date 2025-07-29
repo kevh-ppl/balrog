@@ -8,6 +8,7 @@
         "select.h": "c",
         "daemon.h": "c",
         "stdio.h": "c",
-        "stat.h": "c"
+        "stat.h": "c",
+        "cerrno": "c"
     }
 }
