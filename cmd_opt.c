@@ -110,17 +110,54 @@ static void init_signals(void) {
     set_sig_handler(SIGHUP, SIG_IGN);
 }
 
-void write_cmd_to_cmd_pipe(int argc, char *argv[]) {
+/*
+Waits for the deamon response to the cmd
+@param char* fifo_user_path
+*/
+static void wait_and_print_daemon_response(char *fifo_user_path) {
+    char response_buffer[PIPE_BUF];
+    int fd_fifo_user = open(fifo_user_path, O_RDONLY);
+    int bytes_read = read(fd_fifo_user, response_buffer, PIPE_BUF);
+    // if read() returns 0 it means that the deamon closed the fifo_user
+    while (bytes_read < 0) {
+        bytes_read = read(fd_fifo_user, response_buffer, PIPE_BUF);
+    }
+    response_buffer[bytes_read] = '\0';  // Ensure null-termination
+    printf("%s", response_buffer);
+    close(fd_fifo_user);
+}
+
+/*
+Writes the user's input command to the fifo_deamon and the triggers the wait for the response.
+It uses the args from the program and adds at the end the fifo_user_path the deamon should write the
+response.
+@param int argc
+@param char** argv
+@param char* fifo_user_path
+*/
+void write_cmd_to_cmd_pipe(int argc, char *argv[], char *fifo_user_path) {
     int fd_cmd_pipe = open(daemon_info.cmd_pipe, O_RDWR);
     char cmd_line[PIPE_BUF] = {0};
     for (int i = 1; i < argc; i++) {
         strcat(cmd_line, argv[i]);
         strcat(cmd_line, " ");
     }
+
+    strcat(cmd_line, fifo_user_path);
+    strcat(cmd_line, " ");
     strcat(cmd_line, "\n");
-    write(fd_cmd_pipe, cmd_line, strlen(cmd_line));
+    if (write(fd_cmd_pipe, cmd_line, strlen(cmd_line)) == -1)
+        printf("Couldn't write command into cmd pipe: %m\n");
+    wait_and_print_daemon_response(fifo_user_path);
 }
 
+/*
+Deamon always executes this function.
+It process the command written to the cnd_pipe ak fifo_deamon that does the work for
+the Inter Process Communication.
+@param int argc
+@param char** argv
+ */
 void processing_cmd(int argc, char *argv[]) {
     int opt;
     int fd_cmd_pipe = open(daemon_info.cmd_pipe, O_RDWR);
@@ -131,15 +168,34 @@ void processing_cmd(int argc, char *argv[]) {
     // to work properly, we must reset the optind
     optind = 0;
 
+    int fd_fifo_user = -1;
+    if (argc > 1) {
+        fd_fifo_user = open(argv[argc - 1], O_WRONLY);
+    }
+
     while ((opt = getopt_long(argc, argv, short_opts, long_opts, NULL)) != -1) {
         switch (opt) {
             case cmd_opt_help:
-                puts(help_str);
+                // the last arg is always the fifo_user_path to write the output
+                if (fd_fifo_user > 0) {
+                    write(fd_fifo_user, help_str, strlen(help_str));
+                } else {
+                    // If no arguments are provided, print to stdout
+                    printf("No arguments provided, printing help to stdout:\n");
+                    puts(help_str);
+                }
                 exit_if_not_daemonized(EXIT_SUCCESS);
                 break;
 
             case cmd_opt_version:
-                puts(DAEMON_NAME "  version  " DAEMON_VERSION_STR "\n");
+                char *version = DAEMON_NAME " version " DAEMON_VERSION_STR "\n";
+                if (fd_fifo_user > 0) {
+                    write(fd_fifo_user, version, strlen(version));
+                } else {
+                    // If no arguments are provided, print to stdout
+                    puts(version);
+                }
+
                 exit_if_not_daemonized(EXIT_SUCCESS);
                 break;
 
