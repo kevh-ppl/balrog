@@ -14,8 +14,6 @@
 #include "cmd_opt.h"
 #include "daemon.h"
 
-// Forzar reinicialización de streams
-
 int main(int argc, char *argv[]) {
     int fd_cmd_pipe = open(daemon_info.cmd_pipe, O_RDWR);
     if (fd_cmd_pipe != -1) {
@@ -57,11 +55,12 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        int fd_fifo_user = open(fifo_user_path, O_RDWR, 0644);
-        if (fd_fifo_user < 0) {
-            printf("Couldn't open fifo_user: %m...\n");
-            _exit(EXIT_FAILURE);
-        }
+        // que wey, ya le estoy pasando el path, auque podria pasarle el fd de una vez
+        //  int fd_fifo_user = open(fifo_user_path, O_RDWR, 0644);  // client opens the FIFO
+        //  if (fd_fifo_user < 0) {
+        //      printf("Couldn't open fifo_user: %m...\n");
+        //      _exit(EXIT_FAILURE);
+        //  }
 
         // si ya esta demonizado, debo de mandar la salida del daemon al FIFO del user
         // por lo que:

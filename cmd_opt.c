@@ -115,16 +115,47 @@ Waits for the deamon response to the cmd
 @param char* fifo_user_path
 */
 static void wait_and_print_daemon_response(char *fifo_user_path) {
-    char response_buffer[PIPE_BUF];
-    int fd_fifo_user = open(fifo_user_path, O_RDONLY);
-    int bytes_read = read(fd_fifo_user, response_buffer, PIPE_BUF);
-    // if read() returns 0 it means that the deamon closed the fifo_user
-    while (bytes_read < 0) {
-        bytes_read = read(fd_fifo_user, response_buffer, PIPE_BUF);
+    char *response_buffer = malloc(PIPE_BUF);
+    if (!response_buffer) {
+        perror("malloc");
+        return;
     }
-    response_buffer[bytes_read] = '\0';  // Ensure null-termination
+    size_t buffer_size = PIPE_BUF;
+    int fd_fifo_user = open(fifo_user_path, O_RDONLY);
+
+    if (fd_fifo_user < 0) {
+        perror("open fifo_user_path");
+        free(response_buffer);
+        return;
+    }
+
+    size_t total_read = 0;
+    ssize_t bytes_read;
+    while ((bytes_read = read(fd_fifo_user, response_buffer + total_read,
+                              buffer_size - total_read - 1)) > 0) {
+        total_read += bytes_read;
+
+        if (total_read + 1 >= buffer_size) {
+            buffer_size *= 2;
+            char *new_buffer = realloc(response_buffer, buffer_size);
+            if (!new_buffer) {
+                perror("realloc");
+                free(response_buffer);
+                close(fd_fifo_user);
+                return;
+            }
+            response_buffer = new_buffer;
+        }
+    }
+
+    if (bytes_read < 0) {
+        perror("read");
+    }
+
+    response_buffer[total_read] = '\0';
     printf("%s", response_buffer);
     close(fd_fifo_user);
+    free(response_buffer);
 }
 
 /*
@@ -136,7 +167,7 @@ response.
 @param char* fifo_user_path
 */
 void write_cmd_to_cmd_pipe(int argc, char *argv[], char *fifo_user_path) {
-    int fd_cmd_pipe = open(daemon_info.cmd_pipe, O_RDWR);
+    int fd_cmd_pipe = open(daemon_info.cmd_pipe, O_WRONLY);
     char cmd_line[PIPE_BUF] = {0};
     for (int i = 1; i < argc; i++) {
         strcat(cmd_line, argv[i]);
@@ -160,7 +191,7 @@ the Inter Process Communication.
  */
 void processing_cmd(int argc, char *argv[]) {
     int opt;
-    int fd_cmd_pipe = open(daemon_info.cmd_pipe, O_RDWR);
+    int fd_cmd_pipe = open(daemon_info.cmd_pipe, O_RDONLY);
 
     // We use the processing_cmd function for processing the command line and
     // for commands from the DAEMON_CMD_PIPE_NAME
@@ -201,7 +232,7 @@ void processing_cmd(int argc, char *argv[]) {
 
             case cmd_enumerate:
                 puts("Enumerating devices...");
-                do_enumerate();
+                do_enumerate(fd_fifo_user);
                 exit_if_not_daemonized(EXIT_SUCCESS);
                 break;
 
@@ -275,7 +306,7 @@ static void *cmd_pipe_thread(void *thread_arg) {
 
     if (mkfifo(daemon_info.cmd_pipe, 0622) != 0) daemon_error_exit("Can't create CMD_PIPE: %m\n");
 
-    fd = open(daemon_info.cmd_pipe, O_RDWR);
+    fd = open(daemon_info.cmd_pipe, O_RDONLY);
     if (fd == -1) daemon_error_exit("Can't open CMD_PIPE: %m\n");
 
     while (1) {

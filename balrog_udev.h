@@ -12,7 +12,7 @@ extern struct udev_monitor *monitor;
 
 int init_udev_context();
 
-void do_enumerate();
+void do_enumerate(int fd_fifo_user);
 void free_udev_enumerator();
 
 int start_monitoring();

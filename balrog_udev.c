@@ -4,9 +4,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/file.h>
 #include <sys/select.h>
 #include <unistd.h>
 
+#include "cmd_opt.h"
 #include "daemon.h"
 
 struct udev *udev = NULL;
@@ -44,7 +46,8 @@ static int create_enumerator() {
     return 0;
 }
 
-static int fillup_device_list() {
+static int fillup_device_list(int fd_fifo_user) {
+    printf("Filling up device list... fd_fifo_user: %d\n", fd_fifo_user);
     // fillup device list
     devices = udev_enumerate_get_list_entry(enumerator);
     if (!devices) {
@@ -52,6 +55,16 @@ static int fillup_device_list() {
         udev_enumerate_unref(enumerator);
         return -1;
     }
+
+    printf("Creating buffer...\n");
+    char *info_dev = malloc(PIPE_BUF);
+    if (!info_dev) {
+        perror("malloc");
+        return -1;
+    }
+    info_dev[0] = '\0';
+    size_t offset = 0;
+    size_t buffer_size = PIPE_BUF;
 
     udev_list_entry_foreach(dev_list_entry, devices) {
         const char *path, *tmp;
@@ -63,16 +76,143 @@ static int fillup_device_list() {
 
         // since its already store the info of the udev_device to enumerate, its posibble to print
         // such info
-        printf("I: DEVNODE=%s\n", udev_device_get_devnode(device_to_enumerate));
-        printf("I: KERNEL=%s\n", udev_device_get_sysname(device_to_enumerate));
-        printf("I: DEVPATH=%s\n", udev_device_get_devpath(device_to_enumerate));
-        printf("I: DEVTYPE=%s\n", udev_device_get_devtype(device_to_enumerate));
-        printf("I: SUBSYSTEM=%s\n", udev_device_get_subsystem(device_to_enumerate));
-        printf("I: DEVNUM=%llu\n", (unsigned long long)udev_device_get_devnum(device_to_enumerate));
-        printf("I: DRIVER=%s\n", udev_device_get_driver(device_to_enumerate));
-        printf("I: ACTION=%s\n", udev_device_get_action(device_to_enumerate));
-        printf("I: SEQNUM=%llu\n", udev_device_get_seqnum(device_to_enumerate));
-        printf("\n");
+
+        if (offset + 1 >= buffer_size) {
+            buffer_size *= 2;
+            char *new_buffer = realloc(info_dev, buffer_size);
+            if (!new_buffer) {
+                perror("realloc");
+                free(info_dev);
+                return -1;
+            }
+            info_dev = new_buffer;
+        }
+
+        offset += snprintf(info_dev + offset, buffer_size - offset, "I: DEVPATH = %s\n",
+                           udev_device_get_devpath(device_to_enumerate));
+
+        if (offset + 1 >= buffer_size) {
+            buffer_size *= 2;
+            char *new_buffer = realloc(info_dev, buffer_size);
+            if (!new_buffer) {
+                perror("realloc");
+                free(info_dev);
+                return -1;
+            }
+            info_dev = new_buffer;
+        }
+
+        offset += snprintf(info_dev + offset, buffer_size - offset, "I: KERNEL = %s\n",
+                           udev_device_get_sysname(device_to_enumerate));
+
+        if (offset + 1 >= buffer_size) {
+            buffer_size *= 2;
+            char *new_buffer = realloc(info_dev, buffer_size);
+            if (!new_buffer) {
+                perror("realloc");
+                free(info_dev);
+                return -1;
+            }
+            info_dev = new_buffer;
+        }
+
+        offset += snprintf(info_dev + offset, buffer_size - offset, "I: DEVNODE = %s\n",
+                           udev_device_get_devnode(device_to_enumerate));
+
+        if (offset + 1 >= buffer_size) {
+            buffer_size *= 2;
+            char *new_buffer = realloc(info_dev, buffer_size);
+            if (!new_buffer) {
+                perror("realloc");
+                free(info_dev);
+                return -1;
+            }
+            info_dev = new_buffer;
+        }
+
+        offset += snprintf(info_dev + offset, buffer_size - offset, "I: DEVTYPE = %s\n",
+                           udev_device_get_devtype(device_to_enumerate));
+
+        if (offset + 1 >= buffer_size) {
+            buffer_size *= 2;
+            char *new_buffer = realloc(info_dev, buffer_size);
+            if (!new_buffer) {
+                perror("realloc");
+                free(info_dev);
+                return -1;
+            }
+            info_dev = new_buffer;
+        }
+
+        offset += snprintf(info_dev + offset, buffer_size - offset, "I: SUBSYSTEM = %s\n",
+                           udev_device_get_subsystem(device_to_enumerate));
+
+        if (offset + 1 >= buffer_size) {
+            buffer_size *= 2;
+            char *new_buffer = realloc(info_dev, buffer_size);
+            if (!new_buffer) {
+                perror("realloc");
+                free(info_dev);
+                return -1;
+            }
+            info_dev = new_buffer;
+        }
+
+        offset += snprintf(info_dev + offset, buffer_size - offset, "I: DEVNUM = %llu\n",
+                           (unsigned long long)udev_device_get_devnum(device_to_enumerate));
+
+        if (offset + 1 >= buffer_size) {
+            buffer_size *= 2;
+            char *new_buffer = realloc(info_dev, buffer_size);
+            if (!new_buffer) {
+                perror("realloc");
+                free(info_dev);
+                return -1;
+            }
+            info_dev = new_buffer;
+        }
+
+        offset += snprintf(info_dev + offset, buffer_size - offset, "I: DRIVER = %s\n",
+                           udev_device_get_driver(device_to_enumerate));
+
+        if (offset + 1 >= buffer_size) {
+            buffer_size *= 2;
+            char *new_buffer = realloc(info_dev, buffer_size);
+            if (!new_buffer) {
+                perror("realloc");
+                free(info_dev);
+                return -1;
+            }
+            info_dev = new_buffer;
+        }
+
+        offset += snprintf(info_dev + offset, buffer_size - offset, "I: ACTION = %s\n",
+                           udev_device_get_action(device_to_enumerate));
+
+        if (offset + 1 >= buffer_size) {
+            buffer_size *= 2;
+            char *new_buffer = realloc(info_dev, buffer_size);
+            if (!new_buffer) {
+                perror("realloc");
+                free(info_dev);
+                return -1;
+            }
+            info_dev = new_buffer;
+        }
+
+        offset += snprintf(info_dev + offset, buffer_size - offset, "I: SEQNUM = %llu\n",
+                           udev_device_get_seqnum(device_to_enumerate));
+
+        if (offset + 1 >= buffer_size) {
+            buffer_size *= 2;
+            char *new_buffer = realloc(info_dev, buffer_size);
+            if (!new_buffer) {
+                perror("realloc");
+                free(info_dev);
+                return -1;
+            }
+            info_dev = new_buffer;
+        }
 
         // looks for the size attribute in the sysfs
         tmp = udev_device_get_sysattr_value(device_to_enumerate, "size");
@@ -87,25 +227,77 @@ static int fillup_device_list() {
 
         if (tmp) block_size = atoi(tmp);
 
-        printf("I: DEVSIZE=");
         // check for an optic device (CD/DVD)
         // Also it could be done retreaving the ID_CDROM property
         if (strncmp(udev_device_get_sysname(device_to_enumerate), "sr", 2) != 0) {
             // here using GiB and not GB decimal, also forcing to use 64 bit arithmetic
-            printf("%lld GiB\n", (disk_size * block_size) / (1024LL * 1024 * 1024));
-        } else
-            printf("n/a\n");
+
+            offset +=
+                snprintf(info_dev + offset, buffer_size - offset, "I: DEVSIZE = %llu\n",
+                         (unsigned long long)(disk_size * block_size) / (1024LL * 1024 * 1024));
+
+            if (offset + 1 >= buffer_size) {
+                buffer_size *= 2;
+                char *new_buffer = realloc(info_dev, buffer_size);
+                if (!new_buffer) {
+                    perror("realloc");
+                    free(info_dev);
+                    return -1;
+                }
+                info_dev = new_buffer;
+            }
+        } else {
+            offset += snprintf(info_dev + offset, buffer_size - offset, "I: DEVSIZE = %s\n", "n");
+            if (offset + 1 >= buffer_size) {
+                buffer_size *= 2;
+                char *new_buffer = realloc(info_dev, buffer_size);
+                if (!new_buffer) {
+                    perror("realloc");
+                    free(info_dev);
+                    return -1;
+                }
+                info_dev = new_buffer;
+            }
+        }
+
+        offset +=
+            snprintf(info_dev + offset, buffer_size - offset, "I: BLOCK_SIZE=%hu\n\n", block_size);
+
+        if (offset + 1 >= buffer_size) {
+            buffer_size *= 2;
+            char *new_buffer = realloc(info_dev, buffer_size);
+            if (!new_buffer) {
+                perror("realloc");
+                free(info_dev);
+                return -1;
+            }
+            info_dev = new_buffer;
+        }
 
         // free dev to enumerate
         udev_device_unref(device_to_enumerate);
     }
+    info_dev[offset] = '\0';  // EOF
+    if (fd_fifo_user > 0) {
+        if (write(fd_fifo_user, info_dev, strlen(info_dev)) < 0) {
+            fprintf(stderr, "Error writing to FIFO: %m\n");
+            close(fd_fifo_user);
+            return -1;
+        }
+
+    } else {
+        printf("Not fifo_user_path provided, printing info to stdout:\n");
+        printf("%s\n", info_dev);
+    }
+    printf("Info written to FIFO: %s\n", info_dev);
+    close(fd_fifo_user);
     return 0;
 }
 
 /*
 Initiate block devices enumeration
 */
-void do_enumerate() {
+void do_enumerate(int fd_fifo_user) {
     if (!udev) {
         fprintf(stderr, "Udev context is not initialized\n");
         init_udev_context();
@@ -115,7 +307,7 @@ void do_enumerate() {
         create_enumerator();
     }
 
-    fillup_device_list();
+    fillup_device_list(fd_fifo_user);
 }
 
 /*
