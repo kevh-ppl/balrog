@@ -1,6 +1,7 @@
 #include "balrog_udev.h"
 
 #include <libudev.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +17,8 @@ struct udev_enumerate *enumerator = NULL;
 struct udev_list_entry *devices = NULL, *dev_list_entry = NULL;
 struct udev_device *device_to_enumerate = NULL;
 struct udev_monitor *monitor = NULL;
+pthread_t pthread_monitoring;
+volatile sig_atomic_t keep_monitoring = 1;
 
 int init_udev_context() {
     udev = udev_new();  // declared in enumerate.h
@@ -278,32 +281,48 @@ int set_monitor() {
 Starts monitoring
 This is the task that will be run in the main loop
 */
-int start_monitoring(int fd) {
-    fd_set fds;
-    FD_ZERO(&fds);
-    FD_SET(fd, &fds);
+void *start_monitoring(void *args) {
+    pthread_detach(pthread_self());
+    unlink(daemon_info.cmd_pipe);
 
-    select(fd + 1, &fds, NULL, NULL, NULL);
+    printf("INIT monitoring...\n");
+    int fd = (intptr_t)args;  // just to get along with POSIX standards
+    if (init_udev_context()) daemon_error_exit("Failed to initialize udev context\n");
 
-    if (FD_ISSET(fd, &fds)) {
-        struct udev_device *dev = udev_monitor_receive_device(monitor);
-        if (dev) {
-            const char *action = udev_device_get_action(dev);
-            const char *node = udev_device_get_devnode(dev);
-            const char *subsystem = udev_device_get_subsystem(dev);
+    printf("udev => %p\n", (void *)udev);
 
-            printf("[%s] %s (%s)\n", action, node, subsystem);
-            udev_device_unref(dev);
+    int monitor_fd = set_monitor();
+    if (monitor_fd < 0) daemon_error_exit("Failed to set udev monitor\n");
+    while (keep_monitoring) {
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(fd, &fds);
+
+        select(fd + 1, &fds, NULL, NULL, NULL);
+
+        if (FD_ISSET(fd, &fds)) {
+            struct udev_device *dev = udev_monitor_receive_device(monitor);
+            if (dev) {
+                const char *action = udev_device_get_action(dev);
+                const char *node = udev_device_get_devnode(dev);
+                const char *subsystem = udev_device_get_subsystem(dev);
+
+                printf("[%s] %s (%s)\n", action, node, subsystem);
+                udev_device_unref(dev);
+            }
         }
     }
-
-    return 0;  // This line is unreachable, but added to satisfy the function signature
+    return NULL;
 }
 
 /*
 Stops monitoring juasjuas
 */
-void stop_monitoring() { udev_monitor_unref(monitor); }
+void stop_monitoring() {
+    keep_monitoring = 0;
+    pthread_join(pthread_monitoring, NULL);  // Esperas a que termine
+    udev_monitor_unref(monitor);
+}
 
 // MONITOR
 // ================================

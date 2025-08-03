@@ -1,7 +1,12 @@
 #ifndef BALROG_UDEV_H
 #define BALROG_UDEV_H
 
+#include <pthread.h>
+#include <signal.h>
+
 #define BLOCK_SIZE 512
+
+extern pthread_t pthread_monitoring;
 
 extern struct udev *udev;
 extern struct udev_device *device_to_enumerate;  // to enumerate in the for each
@@ -15,7 +20,7 @@ int init_udev_context();
 void do_enumerate(int fd_fifo_user);
 void free_udev_enumerator();
 
-int start_monitoring();
+void *start_monitoring();
 void stop_monitoring();
 
 void free_udev_context();

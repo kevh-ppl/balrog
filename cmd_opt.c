@@ -9,6 +9,7 @@
 #include <getopt.h>
 #include <limits.h>
 #include <signal.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -244,7 +245,9 @@ void processing_cmd(int argc, char *argv[]) {
 
             case cmd_start_monitor:
                 puts("Starting to monitor USB devices...");
-                start_monitoring();
+                if (pthread_create(&pthread_monitoring, NULL, start_monitoring,
+                                   (void *)(intptr_t)fd_fifo_user) != 0)
+                    daemon_error_exit("Can't create thread_cmd_pipe: %m\n");
                 exit_if_not_daemonized(EXIT_SUCCESS);
                 break;
 
@@ -288,6 +291,9 @@ void processing_cmd(int argc, char *argv[]) {
     }
 }
 
+/*
+Loop that the pthread is gonna be running to get commands written in the cmd_pipe (fifo)
+*/
 static void *cmd_pipe_thread(void *thread_arg) {
     int fd;
     int argc;

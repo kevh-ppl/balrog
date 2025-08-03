@@ -9,6 +9,7 @@
         "daemon.h": "c",
         "stdio.h": "c",
         "stat.h": "c",
-        "cerrno": "c"
+        "cerrno": "c",
+        "signal.h": "c"
     }
 }
