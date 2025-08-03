@@ -72,11 +72,11 @@ static void safe_append(char **buf, size_t *offset, size_t *buf_size, const char
     while (1) {
         int written = vsnprintf(*buf + *offset, *buf_size - *offset, fmt, args);
         va_end(args);
-        printf("written %d | offset %zu | buffer_size %zu\n", written, *offset, *buf_size);
+        // printf("written %d | offset %zu | buffer_size %zu\n", written, *offset, *buf_size);
         if (written < 0) return;
         if ((size_t)written + 1 < *buf_size - *offset) {
             *offset += written;
-            printf("todu ben\n");
+            // printf("todu ben\n");
             break;
         }
         printf("k\n");
@@ -116,7 +116,7 @@ static int fillup_device_list(int fd_fifo_user) {
         // since its already store the info of the udev_device to enumerate, its posibble to print
         // such info
 
-        printf("AHHHHHHHHHHHHHHHHHH\n");
+        // printf("AHHHHHHHHHHHHHHHHHH\n");
         safe_append(&info_dev, &offset, &buffer_size, "I: DEVPATH = %s\n",
                     udev_device_get_devpath(device_to_enumerate));
 
@@ -175,8 +175,8 @@ static int fillup_device_list(int fd_fifo_user) {
         udev_device_unref(device_to_enumerate);
     }  // fin foreach
 
-    printf("FIN DE FOR EACH => offset %zu | buffer_size %zu | length info_dev %zu\n", offset,
-           buffer_size, strlen(info_dev));
+    // printf("FIN DE FOR EACH => offset %zu | buffer_size %zu | length info_dev %zu\n", offset,
+    //        buffer_size, strlen(info_dev));
 
     info_dev[offset] = '\0';  // EOF
     if (fd_fifo_user > 0) {
@@ -193,7 +193,7 @@ static int fillup_device_list(int fd_fifo_user) {
         printf("Not fifo_user_path provided, printing info to stdout:\n");
         printf("%s\n", info_dev);
     }
-    printf("Info written to FIFO: \n%s", info_dev);
+    // printf("Info written to FIFO: \n%s", info_dev);
     close(fd_fifo_user);
     return 0;
 }

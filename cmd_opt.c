@@ -125,6 +125,12 @@ static void wait_and_print_daemon_response(char *fifo_user_path) {
     size_t buffer_size = PIPE_BUF;
     int fd_fifo_user = open(fifo_user_path, O_RDONLY);
 
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(fd_fifo_user, &fds);
+
+    select(fd_fifo_user + 1, &fds, NULL, NULL, NULL);
+
     if (fd_fifo_user < 0) {
         perror("open fifo_user_path");
         free(response_buffer);
@@ -136,7 +142,6 @@ static void wait_and_print_daemon_response(char *fifo_user_path) {
     while ((bytes_read = read(fd_fifo_user, response_buffer + total_read,
                               buffer_size - total_read - 1)) > 0) {
         total_read += bytes_read;
-
         if (total_read + 1 >= buffer_size) {
             buffer_size *= 2;
             char *new_buffer = realloc(response_buffer, buffer_size);
@@ -211,7 +216,9 @@ void processing_cmd(int argc, char *argv[]) {
             case cmd_opt_help:
                 // the last arg is always the fifo_user_path to write the output
                 if (fd_fifo_user > 0) {
-                    write(fd_fifo_user, help_str, strlen(help_str));
+                    if (write(fd_fifo_user, help_str, strlen(help_str)) == -1) {
+                        printf("Error printing help: %m\n");
+                    }
                 } else {
                     // If no arguments are provided, print to stdout
                     printf("No arguments provided, printing help to stdout:\n");
@@ -290,6 +297,8 @@ void processing_cmd(int argc, char *argv[]) {
                 break;
         }
     }
+    close(fd_fifo_user);
+    return;
 }
 
 /*
@@ -333,9 +342,8 @@ static void *cmd_pipe_thread(void *thread_arg) {
         if (bytes_read == 0) {
             // Fin de archivo: todos los writers cerraron
             close(fd);
-            printf("daemon_info.cmd_pipe => %s\n", daemon_info.cmd_pipe);
+            printf("cmd_pipe_thread() => daemon_info.cmd_pipe => %s\n", daemon_info.cmd_pipe);
             fd = open(daemon_info.cmd_pipe, O_RDONLY);
-            printf("daemon_info.cmd_pipe => %s\n", daemon_info.cmd_pipe);
             if (fd == -1) daemon_error_exit("Can't reopen CMD_PIPE: %m\n");
             continue;
         }
@@ -344,6 +352,7 @@ static void *cmd_pipe_thread(void *thread_arg) {
         arg = strtok(cmd_pipe_buf, " \t\n");
 
         while ((arg != NULL) && (argc < PIPE_BUF)) {
+            printf("arg => %s\n", arg);
             argv[argc++] = arg;
             arg = strtok(NULL, " \t\n");
         }
