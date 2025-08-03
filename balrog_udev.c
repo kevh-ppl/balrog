@@ -282,8 +282,8 @@ Starts monitoring
 This is the task that will be run in the main loop
 */
 void *start_monitoring(void *args) {
-    pthread_detach(pthread_self());
-    unlink(daemon_info.cmd_pipe);
+    pthread_detach(pthread_self());  // main wont wait for this thread to finish, also this thread
+                                     // will free its own resources when finished
 
     printf("INIT monitoring...\n");
     int fd = (intptr_t)args;  // just to get along with POSIX standards
@@ -296,11 +296,11 @@ void *start_monitoring(void *args) {
     while (keep_monitoring) {
         fd_set fds;
         FD_ZERO(&fds);
-        FD_SET(fd, &fds);
+        FD_SET(monitor_fd, &fds);
 
-        select(fd + 1, &fds, NULL, NULL, NULL);
+        select(monitor_fd + 1, &fds, NULL, NULL, NULL);
 
-        if (FD_ISSET(fd, &fds)) {
+        if (FD_ISSET(monitor_fd, &fds)) {
             struct udev_device *dev = udev_monitor_receive_device(monitor);
             if (dev) {
                 const char *action = udev_device_get_action(dev);

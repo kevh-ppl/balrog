@@ -90,6 +90,7 @@ int main(int argc, char *argv[]) {
         // if (start_monitoring(monitor_fd) < 0) {
         //     daemon_error_exit("Failed to start monitoring USB IO events\n");
         // }
+        sleep(1);
     }
     return EXIT_SUCCESS;  // good job (we interrupted (finished) main loop)
 }

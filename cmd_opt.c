@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/file.h>
+#include <sys/select.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -312,14 +313,32 @@ static void *cmd_pipe_thread(void *thread_arg) {
 
     if (mkfifo(daemon_info.cmd_pipe, 0622) != 0) daemon_error_exit("Can't create CMD_PIPE: %m\n");
 
-    fd = open(daemon_info.cmd_pipe, O_RDONLY);
+    fd = open(daemon_info.cmd_pipe,
+              O_RDONLY | O_NONBLOCK);  // ok, O_NONBLOCK means that its gonna fail instead of trying
+                                       // again the operation and the failure needs to be handled
     if (fd == -1) daemon_error_exit("Can't open CMD_PIPE: %m\n");
 
     while (1) {
         memset(cmd_pipe_buf, 0, PIPE_BUF);
 
-        if (read(fd, cmd_pipe_buf, PIPE_BUF) == -1)  // wait for command from DAEMON_CMD_PIPE_NAME
-            daemon_error_exit("read CMD_PIPE return -1: %m\n");
+        fd_set read_fds;
+        FD_ZERO(&read_fds);
+        FD_SET(fd, &read_fds);
+        select(fd + 1, &read_fds, NULL, NULL, NULL);
+
+        ssize_t bytes_read = read(fd, cmd_pipe_buf, PIPE_BUF);
+
+        if (bytes_read == -1) daemon_error_exit("read CMD_PIPE return -1: %m\n");
+
+        if (bytes_read == 0) {
+            // Fin de archivo: todos los writers cerraron
+            close(fd);
+            printf("daemon_info.cmd_pipe => %s\n", daemon_info.cmd_pipe);
+            fd = open(daemon_info.cmd_pipe, O_RDONLY);
+            printf("daemon_info.cmd_pipe => %s\n", daemon_info.cmd_pipe);
+            if (fd == -1) daemon_error_exit("Can't reopen CMD_PIPE: %m\n");
+            continue;
+        }
 
         argc = 1;  // see getopt_long function
         arg = strtok(cmd_pipe_buf, " \t\n");
