@@ -253,6 +253,10 @@ void processing_cmd(int argc, char *argv[]) {
 
             case cmd_start_monitor:
                 puts("Starting to monitor USB devices...");
+                if (pipe(exit_pipe) < 0) {
+                    perror("creating one way communication of type pipe for pthread_monitoring");
+                    exit(EXIT_FAILURE);
+                }
                 if (pthread_create(&pthread_monitoring, NULL, start_monitoring,
                                    (void *)(intptr_t)fd_fifo_user) != 0)
                     daemon_error_exit("Can't create thread_cmd_pipe: %m\n");

@@ -1,5 +1,6 @@
 #include "balrog_udev.h"
 
+#include <errno.h>
 #include <libudev.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -19,6 +20,7 @@ struct udev_device *device_to_enumerate = NULL;
 struct udev_monitor *monitor = NULL;
 pthread_t pthread_monitoring;
 volatile sig_atomic_t keep_monitoring = 1;
+int exit_pipe[2];
 
 int init_udev_context() {
     udev = udev_new();  // declared in enumerate.h
@@ -297,8 +299,20 @@ void *start_monitoring(void *args) {
         fd_set fds;
         FD_ZERO(&fds);
         FD_SET(monitor_fd, &fds);
+        FD_SET(exit_pipe[0], &fds);
+        int maxfd = (monitor_fd > exit_pipe[0]) ? monitor_fd : exit_pipe[0];
 
-        select(monitor_fd + 1, &fds, NULL, NULL, NULL);
+        int ret = select(maxfd + 1, &fds, NULL, NULL, NULL);
+        if (ret < 0) {
+            if (errno == EINTR) continue;
+            perror("select");
+            break;
+        }
+
+        if (FD_ISSET(exit_pipe[0], &fds)) {
+            printf("Señal de salida recibida, saliendo del hilo de monitoreo.\n");
+            break;
+        }
 
         if (FD_ISSET(monitor_fd, &fds)) {
             struct udev_device *dev = udev_monitor_receive_device(monitor);
@@ -319,8 +333,7 @@ void *start_monitoring(void *args) {
 Stops monitoring juasjuas
 */
 void stop_monitoring() {
-    keep_monitoring = 0;
-    pthread_join(pthread_monitoring, NULL);  // Esperas a que termine
+    write(exit_pipe[1], "w", 1);
     udev_monitor_unref(monitor);
 }
 

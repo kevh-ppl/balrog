@@ -6,6 +6,8 @@
 
 #define BLOCK_SIZE 512
 
+extern int exit_pipe[2];
+
 extern pthread_t pthread_monitoring;
 
 extern struct udev *udev;

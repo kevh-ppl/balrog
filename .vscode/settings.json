@@ -10,6 +10,11 @@
         "stdio.h": "c",
         "stat.h": "c",
         "cerrno": "c",
-        "signal.h": "c"
+        "signal.h": "c",
+        "cmd_opt.h": "c",
+        "balrog_udev.h": "c",
+        "unistd.h": "c",
+        "file.h": "c",
+        "string.h": "c"
     }
 }
