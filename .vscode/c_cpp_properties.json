@@ -7,7 +7,11 @@
                 "/usr/src/linux-headers-6.1.0-37-amd64/include",
                 "/usr/include",
                 "/usr/include/x86_64-linux-gnu",
-                "/usr/local/include"
+                "/usr/local/include",
+                "/usr/local/",
+                "/usr/include/glib-2.0",
+                "/usr/lib/x86_64-linux-gnu/glib-2.0/include",
+                "/usr/include/libnotify"
             ],
             "defines": [
                 "__KERNEL__",

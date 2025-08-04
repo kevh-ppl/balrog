@@ -1,4 +1,8 @@
 LLIBUDEV := -ludev
+GLIB_CFLAGS := $(shell pkg-config --cflags glib-2.0)
+GLIB_LIBS := $(shell pkg-config --libs glib-2.0)
+LIBNOTIFY_LIBS := $(shell pkg-config --libs libnotify)
+LIBNOTIFY_CFLAGS := $(shell pkg-config --cflags libnotify)
 # GCCFLAGS := $(LLIBUDEV) -Wall -Wextra -Werror -pedantic -std=c99
 # CC := gcc
 
@@ -58,7 +62,7 @@ CFLAGS    += -DCHANGED_FILES=$(CHANGED_FILES)
 
 CFLAGS    += -I$(COMMON_DIR)
 CFLAGS    += -O2  -Wall  -pipe -Wextra -pedantic -std=c99
-CFLAGS    += -lpthread
+CFLAGS    += -lpthread $(GLIB_LIBS) $(LIBNOTIFY_LIBS)
 CFLAGS	  += $(LLIBUDEV)
 
 CC        ?=  gcc
@@ -126,7 +130,7 @@ clean:
 	@echo "Generating dependencies..."
 	@for src in $(SOURCES) ; do  \
         echo "  [depend]  $$src" ; \
-        $(CC) $(CFLAGS) -MT ".depend $${src%.*}.o $${src%.*}_$(DEBUG_SUFFIX).o" -MM $$src >> .depend ; \
+        $(CC) $(GLIB_CFLAGS) $(LIBNOTIFY_CFLAGS) $(CFLAGS) -MT ".depend $${src%.*}.o $${src%.*}_$(DEBUG_SUFFIX).o" -MM $$src >> .depend ; \
     done
 
 
@@ -139,12 +143,12 @@ BUILD_ECHO = echo "\n  [build]  $@:"
 
 define build_object
     @$(BUILD_ECHO)
-    $(CC) -c $< -o $@  $(CFLAGS)
+    $(CC) -c $< -o $@ $(GLIB_CFLAGS) $(LIBNOTIFY_CFLAGS) $(CFLAGS)
 endef
 
 define build_bin
     @$(BUILD_ECHO)
-    $(CC)  $1 -o $@  $(CFLAGS)
+    $(CC)  $1 -o $@ $(GLIB_CFLAGS) $(LIBNOTIFY_CFLAGS) $(CFLAGS)
     @echo "\n---- Compiled $@ ver $(DAEMON_MAJOR_VERSION).$(DAEMON_MINOR_VERSION).$(DAEMON_PATCH_VERSION) ----\n"
 endef
 

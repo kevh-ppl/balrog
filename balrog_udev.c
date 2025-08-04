@@ -1,6 +1,9 @@
 #include "balrog_udev.h"
 
 #include <errno.h>
+#include <glib-2.0/glib.h>
+#include <libnotify/notify-features.h>
+#include <libnotify/notify.h>
 #include <libudev.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -295,6 +298,16 @@ void *start_monitoring(void *args) {
 
     int monitor_fd = set_monitor();
     if (monitor_fd < 0) daemon_error_exit("Failed to set udev monitor\n");
+
+    if (!notify_init("balrog")) {
+        perror("Init notify");
+        return NULL;
+    }
+    NotifyNotification *new_noti =
+        notify_notification_new("Chicken nugget", "Play 50 ceeeeeeent", NULL);
+    GError *errors[2];
+    notify_notification_show(new_noti, errors);
+
     while (keep_monitoring) {
         fd_set fds;
         FD_ZERO(&fds);
