@@ -284,7 +284,7 @@ int set_monitor() {
 
 /*
 Starts monitoring
-This is the task that will be run in the main loop
+This is the task that will be run in monitor_thread
 */
 void *start_monitoring(void *args) {
     pthread_detach(pthread_self());  // main wont wait for this thread to finish, also this thread
@@ -299,14 +299,9 @@ void *start_monitoring(void *args) {
     int monitor_fd = set_monitor();
     if (monitor_fd < 0) daemon_error_exit("Failed to set udev monitor\n");
 
-    if (!notify_init("balrog")) {
-        perror("Init notify");
-        return NULL;
-    }
-    NotifyNotification *new_noti =
-        notify_notification_new("Chicken nugget", "Play 50 ceeeeeeent", NULL);
-    GError *errors[2];
-    notify_notification_show(new_noti, errors);
+    NotifyNotification *new_noti = notify_notification_new(
+        "Balrog", "Monitoreo iniciado...", "/home/kevops/Pictures/mono_autorizo_54px.jpg");
+    GError *errors = NULL;
 
     while (keep_monitoring) {
         fd_set fds;
@@ -334,7 +329,27 @@ void *start_monitoring(void *args) {
                 const char *node = udev_device_get_devnode(dev);
                 const char *subsystem = udev_device_get_subsystem(dev);
 
+                if (!action) action = "No action detected";
+                if (!node) node = "No node detected yet";
+                if (!subsystem) subsystem = "No subsystem";
+
                 printf("[%s] %s (%s)\n", action, node, subsystem);
+                size_t msg_len = strlen(action) + strlen(node) + strlen(subsystem) + 7;
+                char msg[msg_len];
+                snprintf(msg, msg_len, "[%s] %s (%s)\n", action, node, subsystem);
+
+                new_noti = notify_notification_new(
+                    "Balrog", msg, "file:///home/kevops/Pictures/mono_autortizo.jpg");
+                // printf("furros2 | error %s\n", errors[0]->message);
+
+                if (!notify_notification_show(new_noti, &errors)) {
+                    if (errors) {
+                        fprintf(stderr, "notify error: %s\n", errors->message);
+                        g_error_free(errors);
+                    }
+                }
+                g_object_unref(G_OBJECT(new_noti));
+
                 udev_device_unref(dev);
             }
         }

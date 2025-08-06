@@ -15,6 +15,10 @@
 #include "daemon.h"
 
 int main(int argc, char *argv[]) {
+    if (!notify_init("balrog")) {
+        perror("Init notify");
+        return NULL;
+    }
     int fd_cmd_pipe = open(daemon_info.cmd_pipe, O_RDWR);
     if (fd_cmd_pipe != -1) {
         puts("Ya demonizado...");
@@ -93,5 +97,6 @@ int main(int argc, char *argv[]) {
         // }
         sleep(1);
     }
+    notify_uninit();
     return EXIT_SUCCESS;  // good job (we interrupted (finished) main loop)
 }
