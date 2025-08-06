@@ -17,13 +17,9 @@
 #include <sys/select.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
 
 #include "balrog_udev.h"
 #include "daemon.h"
-
-// Forzar reinicialización de streams
-__attribute__((constructor)) void refresh_streams();
 
 pthread_t pthread_cmd_pipe;
 
@@ -53,7 +49,7 @@ const char *help_str = DAEMON_NAME
     "  -m,  --start-monitor             Starts monitoring USB devices related IO events\n"
     "  -w,  --stop-monitor              Stops monitoring USB devices related IO events\n"
     "  -v,  --version                   Display version\n"
-    "  -h,  --help                      Display this help\n\n";
+    "  -h,  --help                      Display this help\n\n\0";
 
 enum {
     cmd_opt_help = 'h',
@@ -125,12 +121,6 @@ static void wait_and_print_daemon_response(char *fifo_user_path) {
     size_t buffer_size = PIPE_BUF;
     int fd_fifo_user = open(fifo_user_path, O_RDONLY);
 
-    fd_set fds;
-    FD_ZERO(&fds);
-    FD_SET(fd_fifo_user, &fds);
-
-    select(fd_fifo_user + 1, &fds, NULL, NULL, NULL);
-
     if (fd_fifo_user < 0) {
         perror("open fifo_user_path");
         free(response_buffer);
@@ -149,7 +139,7 @@ static void wait_and_print_daemon_response(char *fifo_user_path) {
                 perror("realloc");
                 free(response_buffer);
                 close(fd_fifo_user);
-                return;
+                exit(EXIT_FAILURE);
             }
             response_buffer = new_buffer;
         }
@@ -173,19 +163,62 @@ response.
 @param char** argv
 @param char* fifo_user_path
 */
-void write_cmd_to_cmd_pipe(int argc, char *argv[], char *fifo_user_path) {
+void write_cmd_to_cmd_pipe(int argc, char *argv[], char *balrog_dir_user_path, char *fifo_user_path,
+                           unsigned long int uid) {
     int fd_cmd_pipe = open(daemon_info.cmd_pipe, O_WRONLY);
-    char cmd_line[PIPE_BUF] = {0};
-    for (int i = 1; i < argc; i++) {
-        strcat(cmd_line, argv[i]);
-        strcat(cmd_line, " ");
+    if (fd_cmd_pipe == -1) {
+        perror("Error opening cmd pipe");
+        return;
     }
 
-    strcat(cmd_line, fifo_user_path);
-    strcat(cmd_line, " ");
-    strcat(cmd_line, "\n");
-    if (write(fd_cmd_pipe, cmd_line, strlen(cmd_line)) == -1)
-        printf("Couldn't write command into cmd pipe: %m\n");
+    char cmd_line[PIPE_BUF] = {0};
+    int offset = 0;
+
+    // Añadir argumentos
+    for (int i = 1; i < argc; i++) {
+        int len = snprintf(cmd_line + offset, PIPE_BUF - offset, "%s ", argv[i]);
+        if (len < 0 || len >= PIPE_BUF - offset) {
+            fprintf(stderr, "Command line too long (argv)\n");
+            close(fd_cmd_pipe);
+            return;
+        }
+        offset += len;
+    }
+
+    // Añadir balrog_dir_user_path
+    int len = snprintf(cmd_line + offset, PIPE_BUF - offset, "%s ", balrog_dir_user_path);
+    if (len < 0 || len >= PIPE_BUF - offset) {
+        fprintf(stderr, "Command line too long (balrog_dir)\n");
+        close(fd_cmd_pipe);
+        return;
+    }
+    offset += len;
+
+    // Añadir fifo_user_path
+    len = snprintf(cmd_line + offset, PIPE_BUF - offset, "%s ", fifo_user_path);
+    if (len < 0 || len >= PIPE_BUF - offset) {
+        fprintf(stderr, "Command line too long (fifo_path)\n");
+        close(fd_cmd_pipe);
+        return;
+    }
+    offset += len;
+
+    // Añadir uid
+    len = snprintf(cmd_line + offset, PIPE_BUF - offset, "%lu\n", uid);
+    if (len < 0 || len >= PIPE_BUF - offset) {
+        fprintf(stderr, "Command line too long (uid)\n");
+        close(fd_cmd_pipe);
+        return;
+    }
+    offset += len;
+
+    printf("cmd_line => %s\n", cmd_line);
+
+    int bytes_written = write(fd_cmd_pipe, cmd_line, strlen(cmd_line));
+    printf("bytes_written => %d\n", bytes_written);
+    if (bytes_written == -1) perror("Couldn't write command into cmd pipe");
+
+    close(fd_cmd_pipe);
     wait_and_print_daemon_response(fifo_user_path);
 }
 
@@ -198,7 +231,6 @@ the Inter Process Communication.
  */
 void processing_cmd(int argc, char *argv[]) {
     int opt;
-    int fd_cmd_pipe = open(daemon_info.cmd_pipe, O_RDONLY);
 
     // We use the processing_cmd function for processing the command line and
     // for commands from the DAEMON_CMD_PIPE_NAME
@@ -208,10 +240,15 @@ void processing_cmd(int argc, char *argv[]) {
 
     int fd_fifo_user = -1;
     if (argc > 1) {
-        fd_fifo_user = open(argv[argc - 1], O_WRONLY);
+        fd_fifo_user = open(argv[argc - 2], O_WRONLY);
     }
+    printf("fd_fifo_user => %d\n", fd_fifo_user);
+
+    char *fifo_user_path = argv[argc - 2];
+    printf("char *fifo_user_path = argv[argc - 2]; => %s\n", fifo_user_path);
 
     while ((opt = getopt_long(argc, argv, short_opts, long_opts, NULL)) != -1) {
+        printf("opt => %d\n", opt);
         switch (opt) {
             case cmd_opt_help:
                 // the last arg is always the fifo_user_path to write the output
@@ -252,19 +289,42 @@ void processing_cmd(int argc, char *argv[]) {
                 break;
 
             case cmd_start_monitor:
-                puts("Starting to monitor USB devices...");
-                if (pipe(exit_pipe) < 0) {
-                    perror("creating one way communication of type pipe for pthread_monitoring");
-                    exit(EXIT_FAILURE);
+                if (fd_fifo_user > 0) {
+                    char pid_monitor_file[50];
+                    snprintf(pid_monitor_file, 50, "%s/monitor_%s.pid", argv[argc - 3],
+                             argv[argc - 1]);
+                    if (access(pid_monitor_file, F_OK) >= 0) {
+                        char msg_monitor[60] =
+                            "Monitoreo de dispositivos USB ya se encuentra activo...\n";
+                        if (write(fd_fifo_user, msg_monitor, strlen(msg_monitor)) < 0) {
+                            printf("Couldn't write on fd_fifo_user: %m\n");
+                        }
+                        break;
+                    }
+                    create_pid_file(pid_monitor_file);
+
+                    if (pipe(exit_pipe) < 0) {
+                        perror(
+                            "creating one way communication of type pipe for pthread_monitoring");
+                        exit(EXIT_FAILURE);
+                    }
+                    if (pthread_create(&pthread_monitoring, NULL, start_monitoring,
+                                       (void *)(intptr_t)fd_fifo_user) != 0)
+                        daemon_error_exit("Can't create thread_cmd_pipe: %m\n");
+                } else {
+                    printf("Couldn't open fd_fifo_user: %m\n");
                 }
-                if (pthread_create(&pthread_monitoring, NULL, start_monitoring,
-                                   (void *)(intptr_t)fd_fifo_user) != 0)
-                    daemon_error_exit("Can't create thread_cmd_pipe: %m\n");
+
                 exit_if_not_daemonized(EXIT_SUCCESS);
                 break;
 
             case cmd_stop_monitor:
                 puts("Stopping to monitor USB devices...");
+                char pid_monitor_file[50];
+                snprintf(pid_monitor_file, 50, "%s/monitor_%s.pid", argv[argc - 3], argv[argc - 1]);
+                if (access(pid_monitor_file, F_OK) >= 0) {
+                    unlink(pid_monitor_file);
+                }
                 stop_monitoring();
                 printf("Monitor udev pointer value: %p", (void *)monitor);
                 exit_if_not_daemonized(EXIT_SUCCESS);
@@ -361,7 +421,7 @@ static void *cmd_pipe_thread(void *thread_arg) {
             arg = strtok(NULL, " \t\n");
         }
 
-        if (argc > 1) processing_cmd(argc, argv);
+        if (argc >= 1) processing_cmd(argc, argv);
     }
 
     return NULL;

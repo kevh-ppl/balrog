@@ -17,7 +17,7 @@
 int main(int argc, char *argv[]) {
     int fd_cmd_pipe = open(daemon_info.cmd_pipe, O_RDWR);
     if (fd_cmd_pipe != -1) {
-        // puts("Ya demonizado...");
+        puts("Ya demonizado...");
         uid_t uid = getuid();
         if (!uid) printf("UID null, so we're 'monky'\n");
 
@@ -28,24 +28,25 @@ int main(int argc, char *argv[]) {
         }
         // printf("Current directory: %s\n", pw_user->pw_dir);
 
-        char fifo_user_path[1024];
-        snprintf(fifo_user_path, sizeof(fifo_user_path), "%s/.balrog/fifo_%d", pw_user->pw_dir,
-                 pw_user->pw_uid);
+        char fifo_user_name[18];
+        snprintf(fifo_user_name, sizeof(fifo_user_name), "fifo_%lu", (unsigned long int)uid);
 
         // Creation of balrog dir
-        char *balrog_dir = pw_user->pw_dir;
+        char *users_balrog_dir = pw_user->pw_dir;
         strcat(pw_user->pw_dir, "/.balrog");
         struct stat st_balrog;
-        if (stat(balrog_dir, &st_balrog) < 0) {
+        if (stat(users_balrog_dir, &st_balrog) < 0) {
             // if it doesn't exists, i must create it
-            if (mkdir(balrog_dir, 0740) < 0) {
+            if (mkdir(users_balrog_dir, 0740) < 0) {
                 printf("Couldn't mkdir dir balrog: %m...\n");
                 _exit(EXIT_FAILURE);
             }
         }
         // Creation of balrog dir
+        char fifo_user_path[strlen(users_balrog_dir) + strlen(fifo_user_name) + 2];
+        snprintf(fifo_user_path, sizeof(fifo_user_path), "%s/%s", users_balrog_dir, fifo_user_name);
 
-        // printf("fifo_user_path => %s\n", fifo_user_path);
+        printf("fifo_user_path => %s\n", fifo_user_path);
 
         // Crear FIFO si no existe
         if (access(fifo_user_path, F_OK) == -1) {
@@ -70,7 +71,7 @@ int main(int argc, char *argv[]) {
         // Leer FIFO y print a consola
 
         close(fd_cmd_pipe);
-        write_cmd_to_cmd_pipe(argc, argv, fifo_user_path);
+        write_cmd_to_cmd_pipe(argc, argv, users_balrog_dir, fifo_user_path, (unsigned long int)uid);
         return 0;
     }
     processing_cmd(argc, argv);  // first use for initialize the daemon_info structure

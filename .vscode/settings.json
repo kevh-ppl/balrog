@@ -15,6 +15,7 @@
         "balrog_udev.h": "c",
         "unistd.h": "c",
         "file.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "libudev.h": "c"
     }
 }
