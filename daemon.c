@@ -56,11 +56,21 @@ volatile struct daemon_info_t daemon_info = {
     .log_file = NULL,
 #endif
 
+#ifdef DAEMON_MONITOR_LOG_FILE_NAME
+    .monitor_log_file = DAEMON_MONITOR_LOG_FILE_NAME,
+#else
+    .monitor_log_file = NULL,
+#endif
+
 #ifdef DAEMON_CMD_PIPE_NAME
     .cmd_pipe = DAEMON_CMD_PIPE_NAME,
 #else
     .cmd_pipe = NULL,
 #endif
+
+    .default_log_dir = "/var/log/balrog/",
+    .default_run_dir = "/var/run/balrog"
+
 };
 
 // Exit if the daemon is not daemonized
@@ -222,6 +232,25 @@ void daemonize2(void (*optional_init)(void *), void *data) {
 
     // Reset the file mode mask
     umask(0);
+
+    struct stat st_balrog_log;
+    struct stat st_balrog_run;
+    printf("los temerariiios\n");
+    if (stat(daemon_info.default_log_dir, &st_balrog_log) < 0) {
+        // if it doesn't exists, i must create it
+        if (mkdir(daemon_info.default_log_dir, 0750) < 0) {
+            printf("Couldn't mkdir dir /var/logbalrog: %m...\n");
+            _exit(EXIT_FAILURE);
+        }
+    }
+
+    if (stat(daemon_info.default_run_dir, &st_balrog_run) < 0) {
+        // if it doesn't exists, i must create it
+        if (mkdir(daemon_info.default_run_dir, 0755) < 0) {
+            printf("Couldn't mkdir dir /var/run/balrog: %m...\n");
+            _exit(EXIT_FAILURE);
+        }
+    }
 
     // Create a new process group(session) (SID) for the child process
     // call setsid() only if fork is done

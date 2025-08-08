@@ -244,8 +244,10 @@ void processing_cmd(int argc, char *argv[]) {
     }
     printf("fd_fifo_user => %d\n", fd_fifo_user);
 
-    char *fifo_user_path = argv[argc - 2];
-    printf("char *fifo_user_path = argv[argc - 2]; => %s\n", fifo_user_path);
+    if (argc > 1) {
+        char *fifo_user_path = argv[argc - 2];
+        printf("char *fifo_user_path = argv[argc - 2]; => %s\n", fifo_user_path);
+    }
 
     while ((opt = getopt_long(argc, argv, short_opts, long_opts, NULL)) != -1) {
         printf("opt => %d\n", opt);

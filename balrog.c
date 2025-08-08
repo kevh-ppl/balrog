@@ -19,7 +19,7 @@ int main(int argc, char *argv[]) {
         perror("Init notify");
         return NULL;
     }
-    int fd_cmd_pipe = open(daemon_info.cmd_pipe, O_RDWR);
+    int fd_cmd_pipe = open(daemon_info.cmd_pipe, O_WRONLY);
     if (fd_cmd_pipe != -1) {
         puts("Ya demonizado...");
         uid_t uid = getuid();

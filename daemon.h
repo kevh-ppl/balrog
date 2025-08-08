@@ -48,6 +48,9 @@ struct daemon_info_t {
     const char *pid_file;
     const char *log_file;
     const char *cmd_pipe;
+    const char *monitor_log_file;
+    const char *default_run_dir;
+    const char *default_log_dir;
 };
 
 extern volatile struct daemon_info_t daemon_info;
