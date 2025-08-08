@@ -48,6 +48,7 @@ const char *help_str = DAEMON_NAME
     "  -e,  --enumerate                 Enumerates all block (storage) devices\n"
     "  -m,  --start-monitor             Starts monitoring USB devices related IO events\n"
     "  -w,  --stop-monitor              Stops monitoring USB devices related IO events\n"
+    "  -s,  --monitor-log-file          Set your monitor log file instead of default path\n"
     "  -v,  --version                   Display version\n"
     "  -h,  --help                      Display this help\n\n\0";
 
@@ -65,6 +66,7 @@ enum {
     cmd_opt_no_close,
     cmd_opt_pid_file,
     cmd_opt_log_file,
+    cmd_opt_monitor_log_file,
     cmd_opt_cmd_pipe
 };
 
@@ -83,6 +85,7 @@ static const struct option long_opts[] = {
     {"no-close", no_argument, NULL, cmd_opt_no_close},
     {"pid-file", required_argument, NULL, cmd_opt_pid_file},
     {"log-file", required_argument, NULL, cmd_opt_log_file},
+    {"monitor-log-file", required_argument, NULL, cmd_opt_monitor_log_file},
     {"cmd-pipe", required_argument, NULL, cmd_opt_cmd_pipe},
 
     {NULL, no_argument, NULL, 0}};
@@ -351,6 +354,10 @@ void processing_cmd(int argc, char *argv[]) {
 
             case cmd_opt_log_file:
                 daemon_info.log_file = optarg;
+                break;
+
+            case cmd_opt_monitor_log_file:
+                daemon_info.monitor_log_file = optarg;
                 break;
 
             case cmd_opt_cmd_pipe:

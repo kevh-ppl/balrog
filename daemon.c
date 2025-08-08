@@ -155,6 +155,16 @@ int redirect_stdio_to_logfile(const char *log_path) {
     return 0;
 }
 
+int create_monitor_log_file(const char *log_path) {
+    int log_fd = open(log_path, O_CREAT, 0644);
+    if (log_fd < 0) {
+        fprintf(stderr, "Error creating monitor log file: %s\n", strerror(errno));
+        return -1;
+    }
+    close(log_fd);
+    return 0;
+}
+
 int create_pid_file(const char *pid_file_name) {
     int fd;
     const int BUF_SIZE = 32;
@@ -239,7 +249,7 @@ void daemonize2(void (*optional_init)(void *), void *data) {
     if (stat(daemon_info.default_log_dir, &st_balrog_log) < 0) {
         // if it doesn't exists, i must create it
         if (mkdir(daemon_info.default_log_dir, 0750) < 0) {
-            printf("Couldn't mkdir dir /var/logbalrog: %m...\n");
+            printf("Couldn't mkdir dir /var/log/balrog/: %m...\n");
             _exit(EXIT_FAILURE);
         }
     }
@@ -247,10 +257,11 @@ void daemonize2(void (*optional_init)(void *), void *data) {
     if (stat(daemon_info.default_run_dir, &st_balrog_run) < 0) {
         // if it doesn't exists, i must create it
         if (mkdir(daemon_info.default_run_dir, 0755) < 0) {
-            printf("Couldn't mkdir dir /var/run/balrog: %m...\n");
+            printf("Couldn't mkdir dir /var/run/balrog/: %m...\n");
             _exit(EXIT_FAILURE);
         }
     }
+    printf("Dirs created...\n");
 
     // Create a new process group(session) (SID) for the child process
     // call setsid() only if fork is done
@@ -264,12 +275,25 @@ void daemonize2(void (*optional_init)(void *), void *data) {
     if (daemon_info.pid_file && (create_pid_file(daemon_info.pid_file) == -1))
         daemon_error_exit("Can't create pid file: %s: %m\n", daemon_info.pid_file);
 
+    printf("PID FILE created...\n");
+
     if (daemon_info.log_file) {
         if (redirect_stdio_to_logfile(daemon_info.log_file) == -1) {
             daemon_error_exit("Can't redirect stdout/stderr to log file %s: %m\n",
                               daemon_info.log_file);
         }
     }
+
+    printf("Redirecting to log file...\n");
+
+    if (daemon_info.monitor_log_file) {
+        if (create_monitor_log_file(daemon_info.monitor_log_file) == -1) {
+            daemon_error_exit("Couldn't create monitor log file %S: %m\n",
+                              daemon_info.monitor_log_file);
+        }
+    }
+
+    printf("Monitor log created...\n");
 
     // call user functions for the optional initialization
     // before closing the standardIO (STDIN, STDOUT, STDERR)

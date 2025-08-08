@@ -303,6 +303,12 @@ void *start_monitoring(void *args) {
         "Balrog", "Monitoreo iniciado...", "/home/kevops/Pictures/mono_autorizo_54px.jpg");
     GError *errors = NULL;
 
+    int fd_monitor_log_file = open(daemon_info.monitor_log_file, O_WRONLY);
+    if (fd_monitor_log_file < 0) {
+        fprintf(stderr, "Error opening monitor log file: %m\n");
+        return NULL;
+    }
+
     while (keep_monitoring) {
         fd_set fds;
         FD_ZERO(&fds);
@@ -337,6 +343,9 @@ void *start_monitoring(void *args) {
                 size_t msg_len = strlen(action) + strlen(node) + strlen(subsystem) + 7;
                 char msg[msg_len];
                 snprintf(msg, msg_len, "[%s] %s (%s)\n", action, node, subsystem);
+                if (write(fd_monitor_log_file, msg, msg_len) == -1) {
+                    fprintf(stderr, "Error writing in monitor log file: %m\n", strerror(errno));
+                }
 
                 new_noti = notify_notification_new(
                     "Balrog", msg, "file:///home/kevops/Pictures/mono_autortizo.jpg");
