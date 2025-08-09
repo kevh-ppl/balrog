@@ -306,7 +306,7 @@ void processing_cmd(int argc, char *argv[]) {
                         }
                         break;
                     }
-                    create_pid_file(pid_monitor_file);
+                    create_pid_file(daemon_info.monitor_pid_file);
 
                     if (pipe(exit_pipe) < 0) {
                         perror(

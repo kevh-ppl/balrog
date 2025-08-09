@@ -62,6 +62,12 @@ volatile struct daemon_info_t daemon_info = {
     .monitor_log_file = NULL,
 #endif
 
+#ifdef DDAEMON_MONITOR_PID_FILE_NAME
+    .monitor_pid_file = DDAEMON_MONITOR_PID_FILE_NAME,
+#else
+    .monitor_pid_file = NULL,
+#endif
+
 #ifdef DAEMON_CMD_PIPE_NAME
     .cmd_pipe = DAEMON_CMD_PIPE_NAME,
 #else
@@ -157,6 +163,7 @@ int redirect_stdio_to_logfile(const char *log_path) {
 
 int create_monitor_log_file(const char *log_path) {
     int log_fd = open(log_path, O_CREAT, 0644);
+
     if (log_fd < 0) {
         fprintf(stderr, "Error creating monitor log file: %s\n", strerror(errno));
         return -1;
@@ -176,6 +183,7 @@ int create_pid_file(const char *pid_file_name) {
     }
 
     fd = open(pid_file_name, O_RDWR | O_CREAT, 0644);
+
     if (fd < 0) {
         errno = EINVAL;
         fprintf(stderr, "Failed to open PID file '%s': %s\n", pid_file_name, strerror(errno));
@@ -288,7 +296,7 @@ void daemonize2(void (*optional_init)(void *), void *data) {
 
     if (daemon_info.monitor_log_file) {
         if (create_monitor_log_file(daemon_info.monitor_log_file) == -1) {
-            daemon_error_exit("Couldn't create monitor log file %S: %m\n",
+            daemon_error_exit("Couldn't create monitor log file %s: %m\n",
                               daemon_info.monitor_log_file);
         }
     }

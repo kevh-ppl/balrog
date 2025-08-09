@@ -45,10 +45,14 @@ struct daemon_info_t {
     unsigned int no_fork : 1;
     unsigned int no_close_stdio : 1;
 
+    gid_t daemon_group;
+    uid_t daemon_user;
+
     const char *pid_file;
     const char *log_file;
     const char *cmd_pipe;
     const char *monitor_log_file;
+    const char *monitor_pid_file;
     const char *default_run_dir;
     const char *default_log_dir;
 };
