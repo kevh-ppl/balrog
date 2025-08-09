@@ -74,10 +74,10 @@ volatile struct daemon_info_t daemon_info = {
     .cmd_pipe = NULL,
 #endif
 
+    .daemon_group = 0,
+    .daemon_user = 0,
     .default_log_dir = "/var/log/balrog/",
-    .default_run_dir = "/var/run/balrog"
-
-};
+    .default_run_dir = "/var/run/balrog"};
 
 // Exit if the daemon is not daemonized
 // This is used to ensure that the daemon is running in the background
@@ -88,6 +88,43 @@ void exit_if_not_daemonized(int exit_status) {
         stop_monitoring();
         free_udev_context();
         _exit(exit_status);
+    }
+}
+
+int demonized() {
+    FILE *pid_file = fopen(daemon_info.pid_file, "r");
+    if (!pid_file) {
+        fprintf(stderr, "Daemon not running (PID file missing)\n");
+        return -1;
+    }
+
+    pid_t pid;
+    if (fscanf(pid_file, "%d", &pid) != 1) {
+        fprintf(stderr, "Could not read PID from file\n");
+        fclose(pid_file);
+        return -1;
+    }
+    fclose(pid_file);
+
+    printf("Cooooooooooñooooooooooooooooo 1\n");
+
+    // Comprobar si el proceso existe
+    if (kill(pid, 0) == 0) {
+        // Proceso existe y tengo permiso
+        return 1;
+    } else {
+        if (errno == EPERM) {
+            // Existe pero pertenece a otro usuario
+            daemon_info.daemonized = 1;
+            return 1;
+        } else if (errno == ESRCH) {
+            // No existe
+            return -1;
+        } else {
+            // Otro errooorrrrrrr ñia inesperado
+            perror("kill");
+            return -1;
+        }
     }
 }
 
@@ -251,9 +288,15 @@ void daemonize2(void (*optional_init)(void *), void *data) {
     // Reset the file mode mask
     umask(0);
 
+    uid_t uid = getuid();
+    if (!uid) printf("UID null, so we're 'monky'\n");
+    gid_t gid = getgid();
+    if (!gid) printf("GID null, so we're from 'monky'\n");
+    daemon_info.daemon_user = uid;
+    daemon_info.daemon_group = gid;
+
     struct stat st_balrog_log;
     struct stat st_balrog_run;
-    printf("los temerariiios\n");
     if (stat(daemon_info.default_log_dir, &st_balrog_log) < 0) {
         // if it doesn't exists, i must create it
         if (mkdir(daemon_info.default_log_dir, 0750) < 0) {

@@ -3,6 +3,7 @@ GLIB_CFLAGS := $(shell pkg-config --cflags glib-2.0)
 GLIB_LIBS := $(shell pkg-config --libs glib-2.0)
 LIBNOTIFY_LIBS := $(shell pkg-config --libs libnotify)
 LIBNOTIFY_CFLAGS := $(shell pkg-config --cflags libnotify)
+LIBACL_LIBS := $(shell pkg-config --libs libacl)
 # GCCFLAGS := $(LLIBUDEV) -Wall -Wextra -Werror -pedantic -std=c99
 # CC := gcc
 
@@ -66,7 +67,7 @@ CFLAGS    += -DCHANGED_FILES=$(CHANGED_FILES)
 
 CFLAGS    += -I$(COMMON_DIR)
 CFLAGS    += -O2  -Wall  -pipe -Wextra -pedantic -std=c99
-CFLAGS    += -lpthread $(GLIB_LIBS) $(LIBNOTIFY_LIBS)
+CFLAGS    += -lpthread $(GLIB_LIBS) $(LIBNOTIFY_LIBS) $(LIBACL_LIBS)
 CFLAGS	  += $(LLIBUDEV)
 
 CC        ?=  gcc

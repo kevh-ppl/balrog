@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <libudev.h>
+#include <linux/limits.h>
 #include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,6 +11,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "acl_balrog.h"
 #include "balrog_udev.h"
 #include "cmd_opt.h"
 #include "daemon.h"
@@ -20,7 +22,7 @@ int main(int argc, char *argv[]) {
         return NULL;
     }
     int fd_cmd_pipe = open(daemon_info.cmd_pipe, O_WRONLY);
-    if (fd_cmd_pipe != -1) {
+    if (demonized() == 1) {
         puts("Ya demonizado...");
         uid_t uid = getuid();
         if (!uid) printf("UID null, so we're 'monky'\n");
@@ -36,8 +38,9 @@ int main(int argc, char *argv[]) {
         snprintf(fifo_user_name, sizeof(fifo_user_name), "fifo_%lu", (unsigned long int)uid);
 
         // Creation of balrog dir
-        char *users_balrog_dir = pw_user->pw_dir;
-        strcat(pw_user->pw_dir, "/.balrog");
+        char users_balrog_dir[PATH_MAX];
+        snprintf(users_balrog_dir, sizeof(users_balrog_dir), "%s/.balrog", pw_user->pw_dir);
+
         struct stat st_balrog;
         if (stat(users_balrog_dir, &st_balrog) < 0) {
             // if it doesn't exists, i must create it
@@ -54,9 +57,36 @@ int main(int argc, char *argv[]) {
 
         // Crear FIFO si no existe
         if (access(fifo_user_path, F_OK) == -1) {
-            if (mkfifo(fifo_user_path, 0600) == -1) {
+            if (mkfifo(fifo_user_path, 0420) == -1) {
                 fprintf(stderr, "Couldn't create FIFO %s: %s\n", fifo_user_path, strerror(errno));
                 _exit(EXIT_FAILURE);
+            }
+            // if (set_acl_user_rw(fifo_user_path, "balrogd") == -1) {
+            //     fprintf(stderr, "Failed to set ACL for balrogd on %s\n", fifo_user_path);
+            //     _exit(EXIT_FAILURE);
+            // }
+
+            char cmd_home_dir[PATH_MAX];
+            snprintf(cmd_home_dir, sizeof(cmd_home_dir), "setfacl -m u:balrogd:rx %s",
+                     pw_user->pw_dir);
+            int ret_home_dir = system(cmd_home_dir);
+            if (ret_home_dir != 0) {
+                fprintf(stderr, "Error al ejecutar comando setfacl para %s\n", users_balrog_dir);
+            }
+
+            char cmd_balrog_dir[PATH_MAX + 30];
+            snprintf(cmd_balrog_dir, sizeof(cmd_balrog_dir), "setfacl -m u:balrogd:rx %s",
+                     users_balrog_dir);
+
+            int ret_balrog = system(cmd_balrog_dir);
+            if (ret_balrog != 0) {
+                fprintf(stderr, "Error al ejecutar comando setfacl para %s\n", users_balrog_dir);
+            }
+            char cmd[512];
+            snprintf(cmd, sizeof(cmd), "setfacl -m u:balrogd:w- %s", fifo_user_path);
+            int ret = system(cmd);
+            if (ret != 0) {
+                fprintf(stderr, "Error al ejecutar comando setfacl para %s\n", users_balrog_dir);
             }
         }
 

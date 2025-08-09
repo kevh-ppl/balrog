@@ -344,7 +344,7 @@ void *start_monitoring(void *args) {
                 char msg[msg_len];
                 snprintf(msg, msg_len, "[%s] %s (%s)\n", action, node, subsystem);
                 if (write(fd_monitor_log_file, msg, msg_len) == -1) {
-                    fprintf(stderr, "Error writing in monitor log file: %m\n", strerror(errno));
+                    fprintf(stderr, "Error writing in monitor log file: %s\n", strerror(errno));
                 }
 
                 new_noti = notify_notification_new(

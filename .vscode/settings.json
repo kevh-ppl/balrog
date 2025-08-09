@@ -16,6 +16,7 @@
         "unistd.h": "c",
         "file.h": "c",
         "string.h": "c",
-        "libudev.h": "c"
+        "libudev.h": "c",
+        "types.h": "c"
     }
 }

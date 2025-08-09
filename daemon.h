@@ -8,6 +8,7 @@
  */
 
 #include <stddef.h>  //for null
+#include <sys/types.h>
 
 #define F_TLOCK 2  // file lock type, used in lockf()
 
@@ -69,5 +70,7 @@ void set_sig_handler(int sig, signal_handler_t handler);
 
 void daemonize2(void (*optional_init)(void *), void *data);
 static inline void daemonize() { daemonize2(NULL, NULL); }
+
+int demonized();
 
 #endif
