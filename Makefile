@@ -72,7 +72,7 @@ CFLAGS	  += $(LLIBUDEV)
 
 CC        ?=  gcc
 
-CFILES = $(wildcard *.c)
+CFILES = $(wildcard src/*.c)
 SOURCES  = $(CFILES)
 
 OBJECTS  := $(patsubst %.c,  %.o, $(SOURCES) )
