@@ -1,0 +1,9 @@
+.depend src/acl_balrog.o src/acl_balrog_debug.o: src/acl_balrog.c
+.depend src/balrog.o src/balrog_debug.o: src/balrog.c src/acl_balrog.h \
+ src/balrog_udev.h src/cmd_opt.h src/daemon.h
+.depend src/balrog_udev.o src/balrog_udev_debug.o: src/balrog_udev.c \
+ src/balrog_udev.h src/cmd_opt.h src/daemon.h
+.depend src/cmd_opt.o src/cmd_opt_debug.o: src/cmd_opt.c src/cmd_opt.h \
+ src/balrog_udev.h src/daemon.h
+.depend src/daemon.o src/daemon_debug.o: src/daemon.c src/daemon.h \
+ src/balrog_udev.h

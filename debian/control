@@ -1,0 +1,11 @@
+Source: balrog
+Section: utils
+Priority: optional
+Maintainer: Kevin Haro <kevinharo.arph@gmail.com>
+Build-depends:debhelper (>= 11)
+Standards-Version: 4.5.0
+
+Package: balrog
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Utility to sandbox USB storage devices

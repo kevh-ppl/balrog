@@ -113,13 +113,14 @@ $(DAEMON_NAME)_$(DEBUG_SUFFIX): .depend $(DEBUG_OBJECTS)
 
 .PHONY: install
 install:
-	install -D $(DAEMON_NAME) /usr/local/bin/$(DAEMON_NAME)
-	@echo "Installed $(DAEMON_NAME) to /usr/local/bin/$(DAEMON_NAME)"
+	install -D $(DAEMON_NAME) $(DESTDIR)/usr/bin/$(DAEMON_NAME)
+	install -D debian/balrog.service $(DESTDIR)/lib/systemd/system/balrog.service
+	@echo "Installed $(DAEMON_NAME) to /usr/bin/$(DAEMON_NAME)"
 
 .PHONY: uninstall
 uninstall:
-	rm -f /usr/local/bin/$(DAEMON_NAME)
-	@echo "Uninstalled $(DAEMON_NAME) from /usr/local/bin/$(DAEMON_NAME)"
+	rm -f $(DESTDIR)/usr/bin/$(DAEMON_NAME)
+	@echo "Uninstalled $(DAEMON_NAME) from /usr/bin/$(DAEMON_NAME)"
 
 .PHONY: clean
 clean:

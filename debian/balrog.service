@@ -1,0 +1,12 @@
+[Unit]
+Description=Balrog USB Daemon
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/balrog -d
+User=balrogd
+Group=balrogd
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
