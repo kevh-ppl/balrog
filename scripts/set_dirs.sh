@@ -21,4 +21,9 @@ sudo chown -R balrogd:balrogd "$run"
 sudo chown -R balrogd:balrogd "$log"
 sudo chmod 755 "$run" "$log"
 
+
+#alias quitarbalrog='sudo make uninstall balrog && make clean && sudo rm -rf $HOME/.balrog && sudo -u balrogd rm -rf /var/log/balrog/* /var/run/balrog/* && echo "gay" && sudo pkill -9 -f balrog'
+#
+#alias ponerbalrog='make && sudo make install balrog'
+
 echo "Listo"
