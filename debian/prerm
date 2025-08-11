@@ -1,0 +1,12 @@
+#!/bin/sh
+
+set -e
+
+# Habilitar y arrancar el servicio systemd
+if command -v systemctl >/dev/null 2>&1; then
+    systemctl daemon-reload
+    systemctl disable balrog.service
+    systemctl stop balrog.service || true
+fi
+
+exit 0

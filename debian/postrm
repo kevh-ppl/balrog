@@ -1,0 +1,23 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "purge" ] || [ "$1" = "remove" ]; then
+    rm -rf /var/run/balrog
+    rm -rf /var/log/balrog
+
+    if id -u balrogd >/dev/null 2>&1; then
+        userdel -r balrogd || true
+    fi
+
+    if getent group balrogd >/dev/null 2>&1; then
+        groupdel balrogd || true
+    fi
+fi
+
+if [ "$1" = "purge" ]; then
+    rm -rf /var/run/balrog
+    rm -rf /var/log/balrog
+fi
+
+exit 0
+

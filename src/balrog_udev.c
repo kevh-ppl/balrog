@@ -299,8 +299,8 @@ void *start_monitoring(void *args) {
     int monitor_fd = set_monitor();
     if (monitor_fd < 0) daemon_error_exit("Failed to set udev monitor\n");
 
-    NotifyNotification *new_noti = notify_notification_new(
-        "Balrog", "Monitoreo iniciado...", "/home/kevops/Pictures/mono_autorizo_54px.jpg");
+    NotifyNotification *new_noti =
+        notify_notification_new("Balrog", "Monitoreo iniciado...", "mono_autorizo_54px.jpg");
     GError *errors = NULL;
 
     int fd_monitor_log_file = open(daemon_info.monitor_log_file, O_WRONLY);

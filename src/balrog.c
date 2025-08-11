@@ -54,6 +54,7 @@ int main(int argc, char *argv[]) {
         snprintf(fifo_user_path, sizeof(fifo_user_path), "%s/%s", users_balrog_dir, fifo_user_name);
 
         printf("fifo_user_path => %s\n", fifo_user_path);
+        daemon_info.fifo_user_path = fifo_user_path;
 
         // Crear FIFO si no existe
         if (access(fifo_user_path, F_OK) == -1) {

@@ -7,6 +7,8 @@
 #include "cmd_opt.h"
 
 #include <getopt.h>
+#include <libnotify/notify-features.h>
+#include <libnotify/notify.h>
 #include <limits.h>
 #include <signal.h>
 #include <stdint.h>
@@ -153,6 +155,8 @@ static void wait_and_print_daemon_response(char *fifo_user_path) {
     }
 
     response_buffer[total_read] = '\0';
+    // si la respuesta es del monitor, usuario ejecutor lanza notificación
+
     printf("%s", response_buffer);
     close(fd_fifo_user);
     free(response_buffer);

@@ -1,0 +1,54 @@
+#!/bin/sh
+
+set -e
+
+#Debian/Ubuntu
+create_user_debian() {
+    if ! getent group balrogd >/dev/null; then
+       sudo addgroup --system balrogd
+    fi
+
+    if ! id -u balrogd >/dev/null 2>&1; then
+        sudo useradd --system --no-create-home -g balrogd --shell /usr/sbin/nologin balrogd
+    fi
+}
+
+#RedHat/CentOS
+create_user_redhat() {
+    if ! getent group balrogd >/dev/null; then
+       sudo  groupadd -r balrogd
+    fi
+
+    if ! id -u balrogd >/dev/null 2>&1; then
+        sudo useradd -r -g balrogd -s /sbin/nologin -M balrogd
+    fi
+}
+
+if [ -f /etc/debian_version ]; then
+    create_user_debian
+elif [ -f /etc/redhat-release ]; then
+    create_user_redhat
+else
+    echo "Distribución no soportada para crear usuario balrogd automáticamente"
+    exit 1
+fi
+
+run=/var/run/balrog/
+log=/var/log/balrog/
+
+mkdir -p "$run"
+mkdir -p "$log"
+chown -R balrogd:balrogd "$run"
+chown -R balrogd:balrogd "$log"
+chmod 755 "$run" "$log"
+
+update-icon-caches /usr/share/icons/hicolor
+
+# Habilitar y arrancar el servicio systemd
+if command -v systemctl >/dev/null 2>&1; then
+    systemctl daemon-reload
+    systemctl enable balrog.service
+    systemctl start balrog.service || true
+fi
+
+exit 0

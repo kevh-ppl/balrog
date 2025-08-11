@@ -3,7 +3,9 @@ Description=Balrog USB Daemon
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/balrog -d
+Type=forking
+PIDFIle=/var/run/balrog/balrog.pid
+ExecStart=/usr/bin/balrog
 User=balrogd
 Group=balrogd
 Restart=always

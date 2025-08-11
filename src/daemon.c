@@ -73,7 +73,7 @@ volatile struct daemon_info_t daemon_info = {
 #else
     .cmd_pipe = NULL,
 #endif
-
+    .fifo_user_path = NULL,
     .daemon_group = 0,
     .daemon_user = 0,
     .default_log_dir = "/var/log/balrog/",
