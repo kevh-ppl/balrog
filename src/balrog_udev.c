@@ -11,6 +11,8 @@
 #include <string.h>
 #include <sys/file.h>
 #include <sys/select.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
 
 #include "cmd_opt.h"
@@ -287,21 +289,31 @@ Starts monitoring
 This is the task that will be run in monitor_thread
 */
 void *start_monitoring(void *args) {
-    pthread_detach(pthread_self());  // main wont wait for this thread to finish, also this thread
-                                     // will free its own resources when finished
-
+    pthread_detach(pthread_self());
     printf("INIT monitoring...\n");
-    int fd = (intptr_t)args;  // just to get along with POSIX standards
-    if (init_udev_context()) daemon_error_exit("Failed to initialize udev context\n");
 
-    printf("udev => %p\n", (void *)udev);
+    int fd = (intptr_t)args;  // descriptor del cliente o similar
+    if (init_udev_context()) daemon_error_exit("Failed to initialize udev context\n");
 
     int monitor_fd = set_monitor();
     if (monitor_fd < 0) daemon_error_exit("Failed to set udev monitor\n");
 
-    NotifyNotification *new_noti =
-        notify_notification_new("Balrog", "Monitoreo iniciado...", "mono_autorizo_54px.jpg");
-    GError *errors = NULL;
+    // Crear socket UNIX
+    int sock_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (sock_fd < 0) daemon_error_exit("socket failed\n");
+
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strcpy(addr.sun_path, "/var/run/balrog/balrogd.sock");
+    unlink(addr.sun_path);  // borrar si ya existe
+    if (bind(sock_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+        daemon_error_exit("bind failed\n");
+    listen(sock_fd, 5);
+
+    printf("Esperando conexión del cliente...\n");
+    int client_fd = accept(sock_fd, NULL, NULL);
+    if (client_fd < 0) daemon_error_exit("accept failed\n");
 
     int fd_monitor_log_file = open(daemon_info.monitor_log_file, O_WRONLY);
     if (fd_monitor_log_file < 0) {
@@ -313,18 +325,10 @@ void *start_monitoring(void *args) {
         fd_set fds;
         FD_ZERO(&fds);
         FD_SET(monitor_fd, &fds);
-        FD_SET(exit_pipe[0], &fds);
-        int maxfd = (monitor_fd > exit_pipe[0]) ? monitor_fd : exit_pipe[0];
-
-        int ret = select(maxfd + 1, &fds, NULL, NULL, NULL);
+        int ret = select(monitor_fd + 1, &fds, NULL, NULL, NULL);
         if (ret < 0) {
             if (errno == EINTR) continue;
             perror("select");
-            break;
-        }
-
-        if (FD_ISSET(exit_pipe[0], &fds)) {
-            printf("Señal de salida recibida, saliendo del hilo de monitoreo.\n");
             break;
         }
 
@@ -339,30 +343,21 @@ void *start_monitoring(void *args) {
                 if (!node) node = "No node detected yet";
                 if (!subsystem) subsystem = "No subsystem";
 
-                printf("[%s] %s (%s)\n", action, node, subsystem);
-                size_t msg_len = strlen(action) + strlen(node) + strlen(subsystem) + 7;
-                char msg[msg_len];
-                snprintf(msg, msg_len, "[%s] %s (%s)\n", action, node, subsystem);
-                if (write(fd_monitor_log_file, msg, msg_len) == -1) {
-                    fprintf(stderr, "Error writing in monitor log file: %s\n", strerror(errno));
-                }
+                char msg[512];
+                snprintf(msg, sizeof(msg), "[%s] %s (%s)\n", action, node, subsystem);
 
-                new_noti = notify_notification_new(
-                    "Balrog", msg, "file:///home/kevops/Pictures/mono_autortizo.jpg");
-                // printf("furros2 | error %s\n", errors[0]->message);
-
-                if (!notify_notification_show(new_noti, &errors)) {
-                    if (errors) {
-                        fprintf(stderr, "notify error: %s\n", errors->message);
-                        g_error_free(errors);
-                    }
-                }
-                g_object_unref(G_OBJECT(new_noti));
+                write(fd_monitor_log_file, msg, strlen(msg));
+                write(client_fd, msg, strlen(msg));  // enviar al cliente
 
                 udev_device_unref(dev);
             }
         }
     }
+
+    close(fd_monitor_log_file);
+    close(client_fd);
+    close(sock_fd);
+    unlink("/var/run/balrog/balrogd.sock");
     return NULL;
 }
 

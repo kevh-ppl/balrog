@@ -7,8 +7,6 @@
 #include "cmd_opt.h"
 
 #include <getopt.h>
-#include <libnotify/notify-features.h>
-#include <libnotify/notify.h>
 #include <limits.h>
 #include <signal.h>
 #include <stdint.h>
@@ -22,8 +20,10 @@
 
 #include "balrog_udev.h"
 #include "daemon.h"
+#include "user_end_monitor.h"
 
 pthread_t pthread_cmd_pipe;
+pthread_t pthread_user_end_monitoring;
 
 // Define the help string for balrog-usb-utility
 const char *help_str = DAEMON_NAME
@@ -158,8 +158,10 @@ static void wait_and_print_daemon_response(char *fifo_user_path) {
     // si la respuesta es del monitor, usuario ejecutor lanza notificación
 
     printf("%s", response_buffer);
+    printf("maduro es joto\n");
     close(fd_fifo_user);
     free(response_buffer);
+    return NULL;
 }
 
 /*
@@ -180,6 +182,34 @@ void write_cmd_to_cmd_pipe(int argc, char *argv[], char *balrog_dir_user_path, c
 
     char cmd_line[PIPE_BUF] = {0};
     int offset = 0;
+
+    // si opcion -m
+    int start_monitor = -1;
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-m") == 0 || strcmp(argv[i], "--start-monitor") == 0) {
+            start_monitor = 0;
+        }
+    }
+
+    if (start_monitor == 0) {
+        pid_t pid = fork();
+        if (pid < 0) {
+            perror("fork");
+            exit(EXIT_FAILURE);
+        }
+        if (pid == 0) {
+            if (setsid() < 0) daemon_error_exit("Can't setsid: %m\n");
+            pid = fork();
+            if (pid < 0) daemon_error_exit("Segundo fork falló: %m\n");
+            if (pid > 0) exit(0);
+            if (chdir("/") != 0) daemon_error_exit("Can't chdir: %m\n");
+            freopen("/dev/null", "r", stdin);
+            freopen("/dev/null", "w", stdout);
+            freopen("/dev/null", "w", stderr);
+            start_user_end_monitoring(NULL);
+            exit(0);
+        }
+    }
 
     // Añadir argumentos
     for (int i = 1; i < argc; i++) {

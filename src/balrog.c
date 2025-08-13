@@ -19,7 +19,7 @@
 int main(int argc, char *argv[]) {
     if (!notify_init("balrog")) {
         perror("Init notify");
-        return NULL;
+        return -1;
     }
     int fd_cmd_pipe = open(daemon_info.cmd_pipe, O_WRONLY);
     if (demonized() == 1) {

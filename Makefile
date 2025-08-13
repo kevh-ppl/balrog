@@ -114,13 +114,13 @@ $(DAEMON_NAME)_$(DEBUG_SUFFIX): .depend $(DEBUG_OBJECTS)
 .PHONY: install
 install:
 	install -D $(DAEMON_NAME) $(DESTDIR)/usr/bin/$(DAEMON_NAME)
-	install -D debian/balrog.service $(DESTDIR)/lib/systemd/system/balrog.service
+	install -D debian/balrog.service $(DESTDIR)/lib/systemd/user/balrog.service
 	install -D data/mono_autortizo_54px.jpg $(DESTDIR)/usr/share/icons/hicolor/48x48/apps/mono_autorizo_54px.png	
 	@echo "Installed $(DAEMON_NAME) to /usr/bin/$(DAEMON_NAME)"
 
 .PHONY: uninstall
 uninstall:
-	rm -f $(DESTDIR)/lib/systemd/system/balrog.service
+	rm -f $(DESTDIR)/lib/systemd/user/balrog.service
 	rm -f $(DESTDIR)/usr/share/icons/hicolor/48x48/apps/mono_autorizo_54px.png
 	rm -f $(DESTDIR)/usr/bin/$(DAEMON_NAME)
 	@echo "Uninstalled $(DAEMON_NAME) from /usr/bin/$(DAEMON_NAME)"
