@@ -418,7 +418,6 @@ static void *cmd_pipe_thread(void *thread_arg) {
     char **argv;
     char *cmd_pipe_buf;
 
-    pthread_detach(pthread_self());
     unlink(daemon_info.cmd_pipe);
 
     argv = (char **)malloc(PIPE_BUF * sizeof(char *));

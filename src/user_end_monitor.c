@@ -15,7 +15,6 @@ void *start_user_end_monitoring(void *args) {
     // pthread_detach(pthread_self());
     printf("User end monitoring activated...\n");
 
-    setenv("DBUS_SESSION_BUS_ADDRESS", "unix:path=/run/user/1000/bus", 1);
     if (!notify_init("Balrog")) {
         perror("notify_init");
     }
