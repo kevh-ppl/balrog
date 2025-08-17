@@ -329,10 +329,10 @@ void processing_cmd(int argc, char *argv[]) {
 
             case cmd_start_monitor:
                 if (fd_fifo_user > 0) {
-                    char pid_monitor_file[50];
-                    snprintf(pid_monitor_file, 50, "%s/monitor_%s.pid", argv[argc - 3],
-                             argv[argc - 1]);
-                    if (access(pid_monitor_file, F_OK) >= 0) {
+                    // char pid_monitor_file[50];
+                    // snprintf(pid_monitor_file, 50, "%s/monitor_%s.pid", argv[argc - 3],
+                    //          argv[argc - 1]);
+                    if (access(daemon_info.monitor_pid_file, F_OK) >= 0) {
                         char msg_monitor[60] =
                             "Monitoreo de dispositivos USB ya se encuentra activo...\n";
                         if (write(fd_fifo_user, msg_monitor, strlen(msg_monitor)) < 0) {
@@ -359,13 +359,20 @@ void processing_cmd(int argc, char *argv[]) {
 
             case cmd_stop_monitor:
                 puts("Stopping to monitor USB devices...");
-                char pid_monitor_file[50];
-                snprintf(pid_monitor_file, 50, "%s/monitor_%s.pid", argv[argc - 3], argv[argc - 1]);
-                if (access(pid_monitor_file, F_OK) >= 0) {
-                    unlink(pid_monitor_file);
+                // char pid_monitor_file[50];
+                // snprintf(pid_monitor_file, 50, "%s/monitor_%s.pid", argv[argc - 3], argv[argc -
+                // 1]);
+                if (access(daemon_info.monitor_pid_file, F_OK) < 0) {
+                    char *msg_not_monitor_yet =
+                        "It doesn't exists a monitor yet...\nYou can create one doing balrog -m\n";
+                    if (write(fd_fifo_user, msg_not_monitor_yet, strlen(msg_not_monitor_yet)) < 0) {
+                        perror("Error writting ...");
+                    }
+                    break;
                 }
+                unlink(daemon_info.monitor_pid_file);
                 stop_monitoring();
-                printf("Monitor udev pointer value: %p", (void *)monitor);
+                printf("Monitor udev pointer value: %p\n", (void *)monitor);
                 exit_if_not_daemonized(EXIT_SUCCESS);
                 break;
 

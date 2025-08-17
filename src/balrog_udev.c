@@ -292,6 +292,10 @@ void *start_monitoring(void *args) {
     pthread_detach(pthread_self());
     printf("INIT monitoring...\n");
 
+    if (create_pid_file(daemon_info.monitor_pid_file) < 0) {
+        return NULL;
+    }
+
     int fd = (intptr_t)args;  // descriptor del cliente o similar
     if (init_udev_context()) daemon_error_exit("Failed to initialize udev context\n");
 
@@ -305,7 +309,7 @@ void *start_monitoring(void *args) {
     struct sockaddr_un addr;
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
-    strcpy(addr.sun_path, "/var/run/balrog/balrogd.sock");
+    strcpy(addr.sun_path, daemon_info.monitor_socket_file);
     unlink(addr.sun_path);  // borrar si ya existe
     if (bind(sock_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
         daemon_error_exit("bind failed\n");
@@ -324,11 +328,18 @@ void *start_monitoring(void *args) {
     while (keep_monitoring) {
         fd_set fds;
         FD_ZERO(&fds);
+        FD_SET(exit_pipe[0], &fds);
         FD_SET(monitor_fd, &fds);
-        int ret = select(monitor_fd + 1, &fds, NULL, NULL, NULL);
+        int maxfd = (monitor_fd > exit_pipe[0]) ? monitor_fd : exit_pipe[0];
+        int ret = select(maxfd + 1, &fds, NULL, NULL, NULL);
         if (ret < 0) {
             if (errno == EINTR) continue;
             perror("select");
+            break;
+        }
+
+        if (FD_ISSET(exit_pipe[0], &fds)) {
+            printf("Señal de salida recibida, saliendo del hilo de monitoreo.\n");
             break;
         }
 
@@ -357,7 +368,6 @@ void *start_monitoring(void *args) {
     close(fd_monitor_log_file);
     close(client_fd);
     close(sock_fd);
-    unlink("/var/run/balrog/balrogd.sock");
     return NULL;
 }
 
@@ -365,7 +375,9 @@ void *start_monitoring(void *args) {
 Stops monitoring juasjuas
 */
 void stop_monitoring() {
-    write(exit_pipe[1], "w", 1);
+    if (write(exit_pipe[1], "w", 1) < 0) {
+        perror("Error writing exit_pipe[1]");
+    }
     udev_monitor_unref(monitor);
 }
 

@@ -62,10 +62,16 @@ volatile struct daemon_info_t daemon_info = {
     .monitor_log_file = NULL,
 #endif
 
-#ifdef DDAEMON_MONITOR_PID_FILE_NAME
-    .monitor_pid_file = DDAEMON_MONITOR_PID_FILE_NAME,
+#ifdef DAEMON_MONITOR_PID_FILE_NAME
+    .monitor_pid_file = DAEMON_MONITOR_PID_FILE_NAME,
 #else
     .monitor_pid_file = NULL,
+#endif
+
+#ifdef DAEMON_MONITOR_SOCKET_FILE_NAME
+    .monitor_socket_file = DAEMON_MONITOR_SOCKET_FILE_NAME,
+#else
+    .monitor_socket_file = NULL,
 #endif
 
 #ifdef DAEMON_CMD_PIPE_NAME
