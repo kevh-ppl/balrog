@@ -28,7 +28,7 @@ void *start_user_end_monitoring(void *args) {
     struct sockaddr_un addr;
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
-    strcpy(addr.sun_path, "/var/run/balrog/balrogd.sock");
+    strcpy(addr.sun_path, daemon_info.monitor_socket_file);
 
     while (connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         if (errno == ENOENT) {
