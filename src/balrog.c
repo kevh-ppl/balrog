@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
             // }
 
             char cmd_home_dir[PATH_MAX];
-            snprintf(cmd_home_dir, sizeof(cmd_home_dir), "setfacl -m u:balrogd:rx %s",
+            snprintf(cmd_home_dir, sizeof(cmd_home_dir), "setfacl -m u:balrogd:x %s",
                      pw_user->pw_dir);
             int ret_home_dir = system(cmd_home_dir);
             if (ret_home_dir != 0) {
@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
             }
 
             char cmd_balrog_dir[PATH_MAX + 30];
-            snprintf(cmd_balrog_dir, sizeof(cmd_balrog_dir), "setfacl -m u:balrogd:rx %s",
+            snprintf(cmd_balrog_dir, sizeof(cmd_balrog_dir), "setfacl -m u:balrogd:wx %s",
                      users_balrog_dir);
 
             int ret_balrog = system(cmd_balrog_dir);
