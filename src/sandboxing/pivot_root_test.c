@@ -84,5 +84,28 @@ int main(int argc, char **argv) {
     close(fd);
     if (mount(dev, dev_in_root, NULL, MS_BIND, NULL) == -1) die("bind-mount device node");
 
+    // ahora si hacemos el pivote del root
+    if (pivot_root(host_dev, old_root) == -1) die("pivot_root");
+    if (chdir("/") == -1) die("chdir /");
+
+    // mantar proc en la nueva raiz
+    if (mount("proc", "/proc", "proc", MS_NOSUID | MS_NOEXEC | MS_NODEV, NULL) == -1)
+        die("mount /proc");
+
+    // montar deispositivo
+    unsigned long usb_flags = MS_RDONLY | MS_NOSUID | MS_NODEV | MS_NOEXEC;
+    if (mount("/dev/sdb1", "/mnt/usb", fstype, usb_flags, NULL) == -1) die("mount device");
+
+    // desmontar la anterior raiz
+    if (umount2("/.oldroot", MNT_DETACH) == -1) die("unmount oldroot");
+    rmdir("/.oldroot");
+
+    // aquí se puede bajar capacidades y limitar syscalls
+    // ====================================================
+
+    printf("Sandbox listo. Dispositivo montado en /mnt/usb (RO, nosuid,nodev,noexec).\n");
+
+    pause();
+
     return 0;
 }
