@@ -25,3 +25,5 @@ Makefile.deps
 # Archivos específicos del entorno
 .DS_Store
 
+#sonar
+.scannerwork
