@@ -27,3 +27,11 @@ Makefile.deps
 
 #sonar
 .scannerwork
+balrog-sonar.properties
+
+# build DEB
+debian/*.log
+debian/*.debhelper*
+debian/*.substvars
+debian/tmp/
+debian/*-stamp
