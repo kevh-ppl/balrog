@@ -4,6 +4,7 @@ GLIB_LIBS := $(shell pkg-config --libs glib-2.0)
 LIBNOTIFY_LIBS := $(shell pkg-config --libs libnotify)
 LIBNOTIFY_CFLAGS := $(shell pkg-config --cflags libnotify)
 LIBACL_LIBS := $(shell pkg-config --libs libacl)
+DIRHEADERS := -Iinclude
 # GCCFLAGS := $(LLIBUDEV) -Wall -Wextra -Werror -pedantic -std=c99
 # CC := gcc
 
@@ -71,46 +72,61 @@ CFLAGS    += -I$(COMMON_DIR)
 CFLAGS    += -O2  -Wall  -pipe -Wextra -pedantic -std=c99
 CFLAGS    += -lpthread $(GLIB_LIBS) $(LIBNOTIFY_LIBS) $(LIBACL_LIBS)
 CFLAGS	  += $(LLIBUDEV)
+CFLAGS	  += $(DIRHEADERS)
 
 CC        ?=  gcc
 
+OUTPUT_DIR_RELEASE = output_release
+OUTPUT_DIR_DEBUG = output_debug
 CFILES = $(wildcard src/*.c)
 SOURCES  = $(CFILES)
 
-OBJECTS  := $(patsubst %.c,  %.o, $(SOURCES) )
+BASENAMES = $(notdir $(basename $(SOURCES)))
+DEBUG_SUFFIX   = debug
+
+#OBJECTS  := $(patsubst %.c, %.o, $(SOURCES) )
+RELEASE_OBJECTS := $(patsubst src/%.c, $(OUTPUT_DIR_RELEASE)/%.o, $(SOURCES))
+DEBUG_OBJECTS := $(patsubst src/%.c, $(OUTPUT_DIR_DEBUG)/%_$(DEBUG_SUFFIX).o, $(SOURCES))
 
 # patron suffix for debug objects
-DEBUG_SUFFIX   = debug
-DEBUG_OBJECTS := $(patsubst %.o, %_$(DEBUG_SUFFIX).o, $(OBJECTS) )
 
+#DEBUG_OBJECTS := $(patsubst %.o, %_$(DEBUG_SUFFIX).o, $(OBJECTS) )
+
+# Asegurar directorios de salida
+$(OUTPUT_DIR_DEBUG):
+	mkdir -p $@
+
+$(OUTPUT_DIR_RELEASE):
+	mkdir -p $@
 
 .PHONY: all
 all: debug release
 
 .PHONY: release
+release: $(OUTPUT_DIR_RELEASE)
 release: CFLAGS := -s  $(CFLAGS) # strip binary
 release: $(DAEMON_NAME) # build in release mode
 
 .PHONY: debug
 debug: DAEMON_NO_CLOSE_STDIO = 1
+debug: $(OUTPUT_DIR_DEBUG)
 debug: CFLAGS := -DDEBUG  -g  $(CFLAGS) # add debug flag and debug symbols
 debug: $(DAEMON_NAME)_$(DEBUG_SUFFIX) # call build in debug mode
 
 # release mode
-$(DAEMON_NAME): .depend $(OBJECTS)
-	$(call build_bin, $(OBJECTS))
+$(DAEMON_NAME): .depend $(RELEASE_OBJECTS)
+	$(call build_bin, $(RELEASE_OBJECTS))
 
 # debug mode
 $(DAEMON_NAME)_$(DEBUG_SUFFIX): .depend $(DEBUG_OBJECTS)
 	$(call build_bin, $(DEBUG_OBJECTS))
 
 # Build release objects
-%.o: %.c
+$(OUTPUT_DIR_RELEASE)/%.o: src/%.c | $(OUTPUT_DIR_RELEASE)
 	$(build_object)
 
-
 # Build debug objects
-%_$(DEBUG_SUFFIX).o: %.c
+$(OUTPUT_DIR_DEBUG)/%_$(DEBUG_SUFFIX).o: src/%.c | $(OUTPUT_DIR_DEBUG)
 	$(build_object)
 
 .PHONY: install
@@ -131,8 +147,8 @@ uninstall:
 clean:
 	-@rm -f $(DAEMON_NAME)
 	-@rm -f $(DAEMON_NAME)_$(DEBUG_SUFFIX)
-	-@rm -f $(OBJECTS)
-	-@rm -f $(DEBUG_OBJECTS)
+	-@rm -fr $(OUTPUT_DIR_RELEASE)
+	-@rm -fr $(OUTPUT_DIR_DEBUG)
 	-@rm -f .depend
 	-@rm -f *.*~
 
@@ -140,8 +156,11 @@ clean:
 	-@rm -f .depend
 	@echo "Generating dependencies..."
 	@for src in $(SOURCES) ; do  \
+		base=$$(basename $$src .c) \
         echo "  [depend]  $$src" ; \
-        $(CC) $(GLIB_CFLAGS) $(LIBNOTIFY_CFLAGS) $(CFLAGS) -MT ".depend $${src%.*}.o $${src%.*}_$(DEBUG_SUFFIX).o" -MM $$src >> .depend ; \
+        $(CC) $(GLIB_CFLAGS) $(LIBNOTIFY_CFLAGS) $(CFLAGS) -MT \
+		".depend $(OUTPUT_DIR_RELEASE)$$base.o $(OUTPUT_DIR_DEBUG)$$base_$(DEBUG_SUFFIX).o" \
+		-MM $$src >> .depend ; \
     done
 
 
