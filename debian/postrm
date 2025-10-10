@@ -1,6 +1,10 @@
 #!/bin/sh
 set -e
 
+if [ -f /etc/default/balrog]; then
+    . /etc/default/balrog
+fi
+
 if [ "$1" = "purge" ] || [ "$1" = "remove" ]; then
     rm -rf /var/run/balrog
     rm -rf /var/log/balrog
@@ -11,6 +15,11 @@ if [ "$1" = "purge" ] || [ "$1" = "remove" ]; then
 
     if getent group balrogd >/dev/null 2>&1; then
         groupdel balrogd || true
+    fi
+
+    # delete balrog udev rules
+    if [ -f "$UDEV_RULES_PATH"]; then
+        rm -f "$UDEV_RULES_PATH"
     fi
 fi
 

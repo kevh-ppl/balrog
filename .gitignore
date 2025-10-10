@@ -38,3 +38,7 @@ debian/*-stamp
 
 # Notas
 notes/
+
+
+# test scripts
+scripts/prueba

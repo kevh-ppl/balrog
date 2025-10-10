@@ -44,6 +44,55 @@ chmod 755 "$run" "$log"
 
 update-icon-caches /usr/share/icons/hicolor
 
+DEFAULT_FILE_PATH="/etc/default/balrog"
+UDEV_RULES_PATH="/lib/udev/rules.d/99-balrog.rules"
+
+create_env_file() {
+    echo Writing env file
+    if ! touch /etc/default/balrog > /dev/null 2>&1; then
+        echo "Failed to create /etc/default/balrog"
+    fi
+    echo "UDEV_RULES_PATH=$UDEV_RULES_PATH" > "$DEFAULT_FILE_PATH"
+    echo done
+}
+
+create_udev_rules_file() {
+    # NN alto para no interferir con reglas del sistema, así que 99
+    # High NN so balrog rules doesn't interfere with system rules
+
+    # if i'm willing to block all block/storage devices that are connected through USB interfaces
+    # then the father of the block device would be ENV{ID_BUS}=="usb".
+
+    # This rules are supposed to intercept all other utilities actions to automount USB devices 
+    # and prevent them (udisk2, gvfs, systemd-udevd).
+
+    # It is also possible to take away write and read permissions.
+    # Even it is possible to tell udev to not create the dev node in devfs
+
+    # For now i'm gonna go easy
+    echo Writing rules to "$UDEV_RULES_PATH"
+
+    if ! touch "$UDEV_RULES_PATH" > /dev/null 2>&1; then
+        echo "Failed to create balrog udev rules. Sorry :)"
+        exit 1
+    fi
+    echo 'SUBSYSTEM=="block", ACTION=="add", ENV{ID_BUS}=="usb", ENV{UDISK_IGNORE}="1"' > "$UDEV_RULES_PATH"
+    echo done
+}
+
+reload_udev_rules() {
+    echo Reloading udev rules
+    if ! udevadm control --reload > /dev/null 2>&1; then
+        echo "Reload fail"
+        echo "You may want try to execute \"udevadm control --reload\" or reboot your system"
+    fi
+    echo done
+}
+
+create_env_file
+create_udev_rules_file
+reload_udev_rules
+
 # Habilitar y arrancar el servicio systemd
 if command -v systemctl >/dev/null 2>&1; then
     systemctl daemon-reload
