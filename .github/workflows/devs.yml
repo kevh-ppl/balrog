@@ -28,8 +28,8 @@ jobs:
 
     - name: Move DEB files into workspace
       run: |
-        mkdir -p balrog_build
-        mv ../balrog_build/*.deb balrog_build/ || echo "No .deb found"
+        sudo mkdir -p balrog_build
+        sudo mv ../balrog_build/*.deb balrog_build/ || echo "No .deb found"
 
     - name: Upload DEB artifact # sharing .deb between jobs
       uses: actions/upload-artifact@v4
