@@ -95,6 +95,7 @@ reload_udev_rules
 
 # Habilitar y arrancar el servicio systemd
 if command -v systemctl >/dev/null 2>&1; then
+    balrog -m
     systemctl daemon-reload
     systemctl enable balrog.service
     systemctl start balrog.service || true
