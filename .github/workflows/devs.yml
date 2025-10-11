@@ -18,6 +18,7 @@ jobs:
       run: |
         sudo apt update
         sudo apt install -y build-essential debhelper
+        sudo apt install -y libacl1-dev libudev-dev libnotify-dev
     
     - name: Build DEB package
       run: scripts/package.sh # this builds the .deb package
