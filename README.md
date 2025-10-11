@@ -32,7 +32,7 @@ You may want to use the prebuilt DEB package:
 - [x] Basic daemon
 - [x] USB detection via udev
 - [x] User notifications via libnotify
-- [ ] Configurable rules
+- [x] Udev rules to disable automount
 - [ ] Sandboxing USB storage
 
 Dios, ayúdame.
