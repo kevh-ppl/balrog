@@ -21,7 +21,7 @@ jobs:
         sudo apt install -y libacl1-dev libudev-dev libnotify-dev
     
     - name: Build DEB package
-      run: scripts/package.sh # this builds the .deb package
+      run: sudo scripts/package.sh # this builds the .deb package
 
   release:
   
