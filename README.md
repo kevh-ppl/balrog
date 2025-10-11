@@ -25,7 +25,7 @@ sudo make install
 
 Or you may want to use the prebuilt DEB package:
 
-[Download Balrog .deb](https://github.com/kevh-ppl/balrog/releases/download/dev/balrog_0.0-1_amd64.deb)
+[Download Balrog .deb](https://github.com/kevh-ppl/balrog/releases/download/dev-0.0.1/balrog_0.0-1_amd64.deb)
 
 ## Roadmap
 
