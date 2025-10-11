@@ -106,6 +106,7 @@ all: debug release
 release: $(OUTPUT_DIR_RELEASE)
 release: CFLAGS := -s  $(CFLAGS) # strip binary
 release: $(DAEMON_NAME) # build in release mode
+release: install
 
 .PHONY: debug
 debug: DAEMON_NO_CLOSE_STDIO = 1
@@ -131,6 +132,7 @@ $(OUTPUT_DIR_DEBUG)/%_$(DEBUG_SUFFIX).o: src/%.c | $(OUTPUT_DIR_DEBUG)
 
 .PHONY: install
 install:
+# #DESTDIR viene del empaquetado DEB
 	install -D $(DAEMON_NAME) $(DESTDIR)/usr/bin/$(DAEMON_NAME)
 	install -D debian/balrog.service $(DESTDIR)/lib/systemd/user/balrog.service
 	install -D data/mono_autortizo_54px.jpg $(DESTDIR)/usr/share/icons/hicolor/48x48/apps/mono_autorizo_54px.png	

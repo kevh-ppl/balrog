@@ -76,7 +76,7 @@ create_udev_rules_file() {
         echo "Failed to create balrog udev rules. Sorry :)"
         exit 1
     fi
-    echo 'SUBSYSTEM=="block", ACTION=="add", ENV{ID_BUS}=="usb", ENV{UDISK_IGNORE}="1"' > "$UDEV_RULES_PATH"
+    echo 'SUBSYSTEM=="block", ACTION=="add", ENV{ID_BUS}=="usb", ENV{UDISKS_IGNORE}="1"' > "$UDEV_RULES_PATH"
     echo done
 }
 
