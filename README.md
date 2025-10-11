@@ -13,17 +13,17 @@
 
 ![Little explanation on balrog shitty design](data/balrog.drawio.png)
 
-
-## Installation
+## Debug
 
 ```bash
 git clone https://github.com/kevh-ppl/balrog.git
 cd balrog
-make
-sudo make install
+make debug
 ```
 
-Or you may want to use the prebuilt DEB package:
+## Installation
+
+You may want to use the prebuilt DEB package:
 
 [Download Balrog .deb](https://github.com/kevh-ppl/balrog/releases/download/dev-0.0.1/balrog_0.0-1_amd64.deb)
 
