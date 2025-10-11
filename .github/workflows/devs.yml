@@ -13,6 +13,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Install deps
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential debhelper
     
     - name: Build DEB package
       run: scripts/package.sh # this builds the .deb package
