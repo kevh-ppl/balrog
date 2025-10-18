@@ -4,8 +4,13 @@ After=graphical.target
 
 [Service]
 Type=forking
-PIDFIle=/var/run/balrog/balrog.pid
+PIDFile=/var/run/balrog/balrog.pid
 ExecStart=/usr/bin/balrog
+ExecStop=/bin/kill -s SIGINT $MAINPID
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=balrog
+SyslogFacility=daemon
 User=balrogd
 Group=balrogd
 Restart=on-failure

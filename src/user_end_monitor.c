@@ -11,7 +11,7 @@
 
 #include "daemon.h"
 
-void *start_user_end_monitoring(void *args) {
+void* start_user_end_monitoring(void* args) {
     // pthread_detach(pthread_self());
     printf("User end monitoring activated...\n");
 
@@ -30,7 +30,7 @@ void *start_user_end_monitoring(void *args) {
     addr.sun_family = AF_UNIX;
     strcpy(addr.sun_path, daemon_info.monitor_socket_file);
 
-    while (connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+    while (connect(sock_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         if (errno == ENOENT) {
             usleep(100000);  // esperar 100ms a que el socket exista
             continue;
@@ -41,8 +41,8 @@ void *start_user_end_monitoring(void *args) {
         }
     }
 
-    NotifyNotification *new_noti;
-    GError *errors = NULL;
+    NotifyNotification* new_noti;
+    GError* errors = NULL;
     char buffer[512];
 
     printf("Getting into loop...\n");
@@ -73,4 +73,11 @@ void *start_user_end_monitoring(void *args) {
     notify_uninit();
     close(sock_fd);
     return NULL;
+}
+
+int end_user_side_monitor() {
+    // get path dir .balrog
+    // check if monitor.pid exists
+    // delete it if exists
+    // if not just return 0
 }

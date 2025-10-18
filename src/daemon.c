@@ -98,9 +98,10 @@ void exit_if_not_daemonized(int exit_status) {
 }
 
 int demonized() {
-    FILE *pid_file = fopen(daemon_info.pid_file, "r");
+    FILE* pid_file = fopen(daemon_info.pid_file, "r");
     if (!pid_file) {
-        fprintf(stderr, "Daemon not running (PID file missing)\n");
+        fprintf(stderr, "Daemon not running (PID file missing)\n");  // on restart with systemd it
+                                                                     // shows this log
         return -1;
     }
 
@@ -111,8 +112,6 @@ int demonized() {
         return -1;
     }
     fclose(pid_file);
-
-    printf("Cooooooooooñooooooooooooooooo 1\n");
 
     // Comprobar si el proceso existe
     if (kill(pid, 0) == 0) {
@@ -140,7 +139,7 @@ int demonized() {
  * It will print the error message to stderr and then exit the daemon.
  * The exit status will be EXIT_FAILURE.
  */
-void daemon_error_exit(const char *format, ...) {
+void daemon_error_exit(const char* format, ...) {
     va_list ap;
 
     if (format && *format) {
@@ -171,7 +170,7 @@ int redirect_stdio_to_devnull(void) {
     return 0;
 }
 
-int redirect_stdio_to_logfile(const char *log_path) {
+int redirect_stdio_to_logfile(const char* log_path) {
     int log_fd = open(log_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
     if (log_fd < 0) {
         fprintf(stderr, "Error opening log file: %s\n", strerror(errno));
@@ -204,7 +203,7 @@ int redirect_stdio_to_logfile(const char *log_path) {
     return 0;
 }
 
-int create_monitor_log_file(const char *log_path) {
+int create_monitor_log_file(const char* log_path) {
     int log_fd = open(log_path, O_CREAT, 0644);
 
     if (log_fd < 0) {
@@ -215,7 +214,7 @@ int create_monitor_log_file(const char *log_path) {
     return 0;
 }
 
-int create_pid_file(const char *pid_file_name) {
+int create_pid_file(const char* pid_file_name) {
     int fd;
     const int BUF_SIZE = 32;
     char pid_str[BUF_SIZE];
@@ -288,7 +287,8 @@ static void do_fork() {
 /*
 This functions handles the demonization options.
 */
-void daemonize2(void (*optional_init)(void *), void *data) {
+void daemonize2(void (*optional_init)(void*), void* data) {
+    printf("Init daemonizing");
     if (!daemon_info.no_fork) do_fork();
 
     // Reset the file mode mask
@@ -334,23 +334,23 @@ void daemonize2(void (*optional_init)(void *), void *data) {
 
     printf("PID FILE created...\n");
 
-    if (daemon_info.log_file) {
-        if (redirect_stdio_to_logfile(daemon_info.log_file) == -1) {
-            daemon_error_exit("Can't redirect stdout/stderr to log file %s: %m\n",
-                              daemon_info.log_file);
-        }
-    }
+    // if (daemon_info.log_file) {
+    //     if (redirect_stdio_to_logfile(daemon_info.log_file) == -1) {
+    //         daemon_error_exit("Can't redirect stdout/stderr to log file %s: %m\n",
+    //                           daemon_info.log_file);
+    //     }
+    // }
 
-    printf("Redirecting to log file...\n");
+    // printf("Redirecting to log file...\n");
 
-    if (daemon_info.monitor_log_file) {
-        if (create_monitor_log_file(daemon_info.monitor_log_file) == -1) {
-            daemon_error_exit("Couldn't create monitor log file %s: %m\n",
-                              daemon_info.monitor_log_file);
-        }
-    }
+    // if (daemon_info.monitor_log_file) {
+    //     if (create_monitor_log_file(daemon_info.monitor_log_file) == -1) {
+    //         daemon_error_exit("Couldn't create monitor log file %s: %m\n",
+    //                           daemon_info.monitor_log_file);
+    //     }
+    // }
 
-    printf("Monitor log created...\n");
+    // printf("Monitor log created...\n");
 
     // call user functions for the optional initialization
     // before closing the standardIO (STDIN, STDOUT, STDERR)

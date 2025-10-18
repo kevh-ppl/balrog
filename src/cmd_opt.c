@@ -26,7 +26,7 @@ pthread_t pthread_cmd_pipe;
 pthread_t pthread_user_end_monitoring;
 
 // Define the help string for balrog-usb-utility
-const char *help_str = DAEMON_NAME
+const char* help_str = DAEMON_NAME
     "\n"
     " Version: " DAEMON_VERSION_STR
     "\n\n"
@@ -72,7 +72,7 @@ enum {
     cmd_opt_cmd_pipe
 };
 
-static const char *short_opts = "hvemwp";
+static const char* short_opts = "hvemwp";
 static const struct option long_opts[] = {
     {"version", no_argument, NULL, cmd_opt_version},
     {"help", no_argument, NULL, cmd_opt_help},
@@ -94,8 +94,11 @@ static const struct option long_opts[] = {
 
 static void daemon_exit_handler(int sig) {
     // Here we release resources
+    // here i must delete balrog.cmd
 
     unlink(daemon_info.pid_file);
+    // it's not deleting the cmd_pipe because userside it's still using it
+    //
     unlink(daemon_info.cmd_pipe);
 
     _exit(EXIT_FAILURE);
@@ -117,8 +120,8 @@ static void init_signals(void) {
 Waits for the deamon response to the cmd
 @param char* fifo_user_path
 */
-static void wait_and_print_daemon_response(char *fifo_user_path) {
-    char *response_buffer = malloc(PIPE_BUF);
+static void wait_and_print_daemon_response(char* fifo_user_path) {
+    char* response_buffer = malloc(PIPE_BUF);
     if (!response_buffer) {
         perror("malloc");
         return;
@@ -139,7 +142,7 @@ static void wait_and_print_daemon_response(char *fifo_user_path) {
         total_read += bytes_read;
         if (total_read + 1 >= buffer_size) {
             buffer_size *= 2;
-            char *new_buffer = realloc(response_buffer, buffer_size);
+            char* new_buffer = realloc(response_buffer, buffer_size);
             if (!new_buffer) {
                 perror("realloc");
                 free(response_buffer);
@@ -172,7 +175,7 @@ response.
 @param char** argv
 @param char* fifo_user_path
 */
-void write_cmd_to_cmd_pipe(int argc, char *argv[], char *balrog_dir_user_path, char *fifo_user_path,
+void write_cmd_to_cmd_pipe(int argc, char* argv[], char* balrog_dir_user_path, char* fifo_user_path,
                            unsigned long int uid) {
     int fd_cmd_pipe = open(daemon_info.cmd_pipe, O_WRONLY);
     if (fd_cmd_pipe == -1) {
@@ -185,7 +188,7 @@ void write_cmd_to_cmd_pipe(int argc, char *argv[], char *balrog_dir_user_path, c
 
     // si opcion -m
     int start_monitor = -1;
-    char *monitor_pid_name = "monitor.pid";
+    char* monitor_pid_name = "monitor.pid";
     char monitor_pid_path[strlen(balrog_dir_user_path) + strlen(monitor_pid_name) + 2];
     snprintf(monitor_pid_path, sizeof(monitor_pid_path), "%s/%s", balrog_dir_user_path,
              monitor_pid_name);
@@ -318,7 +321,7 @@ the Inter Process Communication.
 @param int argc
 @param char** argv
  */
-void processing_cmd(int argc, char *argv[]) {
+void processing_cmd(int argc, char* argv[]) {
     int opt;
 
     // We use the processing_cmd function for processing the command line and
@@ -331,11 +334,11 @@ void processing_cmd(int argc, char *argv[]) {
     if (argc > 1) {
         fd_fifo_user = open(argv[argc - 2], O_WRONLY);
     }
-    printf("fd_fifo_user => %d\n", fd_fifo_user);
+    fprintf("fd_fifo_user => %d\n", fd_fifo_user);
 
     if (argc > 1) {
-        char *fifo_user_path = argv[argc - 2];
-        printf("char *fifo_user_path = argv[argc - 2]; => %s\n", fifo_user_path);
+        char* fifo_user_path = argv[argc - 2];
+        fprintf("char *fifo_user_path = argv[argc - 2]; => %s\n", fifo_user_path);
     }
 
     while ((opt = getopt_long(argc, argv, short_opts, long_opts, NULL)) != -1) {
@@ -356,7 +359,7 @@ void processing_cmd(int argc, char *argv[]) {
                 break;
 
             case cmd_opt_version:
-                char *version = DAEMON_NAME " version " DAEMON_VERSION_STR "\n";
+                char* version = DAEMON_NAME " version " DAEMON_VERSION_STR "\n";
                 if (fd_fifo_user > 0) {
                     write(fd_fifo_user, version, strlen(version));
                 } else {
@@ -375,8 +378,8 @@ void processing_cmd(int argc, char *argv[]) {
 
             case cmd_print_udev_vars:
                 puts("Printing udev variables for debugging...");
-                printf("Udev context: %p\n", (void *)udev);
-                printf("Udev monitor: %p\n", (void *)monitor);
+                printf("Udev context: %p\n", (void*)udev);
+                printf("Udev monitor: %p\n", (void*)monitor);
                 break;
 
             case cmd_start_monitor:
@@ -401,7 +404,7 @@ void processing_cmd(int argc, char *argv[]) {
                         exit(EXIT_FAILURE);
                     }
                     if (pthread_create(&pthread_monitoring, NULL, start_monitoring,
-                                       (void *)(intptr_t)fd_fifo_user) != 0)
+                                       (void*)(intptr_t)fd_fifo_user) != 0)
                         daemon_error_exit("Can't create thread_cmd_pipe: %m\n");
                 } else {
                     printf("Couldn't open fd_fifo_user: %m\n");
@@ -416,7 +419,7 @@ void processing_cmd(int argc, char *argv[]) {
                 // snprintf(pid_monitor_file, 50, "%s/monitor_%s.pid", argv[argc - 3], argv[argc
                 // - 1]);
                 if (access(daemon_info.monitor_pid_file, F_OK) < 0) {
-                    char *msg_not_monitor_yet =
+                    char* msg_not_monitor_yet =
                         "It doesn't exists a monitor yet...\nYou can create one doing balrog "
                         "-m\n";
                     if (write(fd_fifo_user, msg_not_monitor_yet, strlen(msg_not_monitor_yet)) < 0) {
@@ -426,7 +429,7 @@ void processing_cmd(int argc, char *argv[]) {
                 }
                 unlink(daemon_info.monitor_pid_file);
                 stop_monitoring();
-                printf("Monitor udev pointer value: %p\n", (void *)monitor);
+                printf("Monitor udev pointer value: %p\n", (void*)monitor);
                 exit_if_not_daemonized(EXIT_SUCCESS);
                 break;
 
@@ -472,19 +475,19 @@ void processing_cmd(int argc, char *argv[]) {
 /*
 Loop that the pthread is gonna be running to get commands written in the cmd_pipe (fifo)
 */
-static void *cmd_pipe_thread(void *thread_arg) {
+static void* cmd_pipe_thread(void* thread_arg) {
     int fd;
     int argc;
-    char *arg;
-    char **argv;
-    char *cmd_pipe_buf;
+    char* arg;
+    char** argv;
+    char* cmd_pipe_buf;
 
     unlink(daemon_info.cmd_pipe);
 
-    argv = (char **)malloc(PIPE_BUF * sizeof(char *));
+    argv = (char**)malloc(PIPE_BUF * sizeof(char*));
     if (!argv) daemon_error_exit("Can't get mem for argv (CMD_PIPE): %m\n");
 
-    cmd_pipe_buf = (char *)malloc(PIPE_BUF);
+    cmd_pipe_buf = (char*)malloc(PIPE_BUF);
     if (!cmd_pipe_buf) daemon_error_exit("Can't get mem for cmd_pipe_buf: %m\n");
 
     if (mkfifo(daemon_info.cmd_pipe, 0622) != 0) daemon_error_exit("Can't create CMD_PIPE: %m\n");
@@ -530,7 +533,7 @@ static void *cmd_pipe_thread(void *thread_arg) {
     return NULL;
 }
 
-void init_cmd_line(void *data) {
+void init_cmd_line(void* data) {
     init_signals();
 
     if (pthread_create(&pthread_cmd_pipe, NULL, cmd_pipe_thread, NULL) != 0)

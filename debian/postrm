@@ -1,6 +1,15 @@
 #!/bin/sh
 set -e
 
+reload_udev_rules() {
+    echo Reloading udev rules
+    if ! udevadm control --reload > /dev/null 2>&1; then
+        echo "Reload fail"
+        echo "You may want try to execute \"udevadm control --reload\" or reboot your system"
+    fi
+    echo done
+}
+
 if [ -f /etc/default/balrog]; then
     . /etc/default/balrog
 fi
@@ -8,6 +17,8 @@ fi
 if [ "$1" = "purge" ] || [ "$1" = "remove" ]; then
     rm -rf /var/run/balrog
     rm -rf /var/log/balrog
+    rm -rf "$UDEV_RULES_PATH"
+    reload_udev_rules
 
     if id -u balrogd >/dev/null 2>&1; then
         userdel -r balrogd || true
