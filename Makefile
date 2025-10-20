@@ -1,195 +1,58 @@
-LLIBUDEV := -ludev
-GLIB_CFLAGS := $(shell pkg-config --cflags glib-2.0)
-GLIB_LIBS := $(shell pkg-config --libs glib-2.0)
-LIBNOTIFY_LIBS := $(shell pkg-config --libs libnotify)
-LIBNOTIFY_CFLAGS := $(shell pkg-config --cflags libnotify)
-LIBACL_LIBS := $(shell pkg-config --libs libacl)
-DIRHEADERS := -Iinclude
-# GCCFLAGS := $(LLIBUDEV) -Wall -Wextra -Werror -pedantic -std=c99
-# CC := gcc
+include Config.mk
 
-# all: udev.c
-# 	$(CC) udev.c -o balrog $(GCCFLAGS)
+CLIENT_MK := Client.mk
+DAEMON_MK := Daemon.mk
 
-# clean:
-# 	rm -f balrog
+all: client daemon
 
-DAEMON_NAME           = balrog
-DAEMON_MAJOR_VERSION  = 0
-DAEMON_MINOR_VERSION  = 0
-DAEMON_PATCH_VERSION  = *hash
-#variants:  hash - set PATCH_VERSION == commit hash (12 digits)
-#variants: *hash - set PATCH_VERSION == * + commit hash (12 digits),
-#                  * will be set if files in repo are changed
-#variants:  xxx  - set PATCH_VERSION == xxx (your variant)
+client:
+	@echo "\nBuilding client"
+	$(MAKE) -f $(CLIENT_MK) release
 
-DAEMON_PID_FILE_NAME  = /var/run/$(DAEMON_NAME)/$(DAEMON_NAME).pid
-DAEMON_LOG_FILE_NAME  = /var/log/$(DAEMON_NAME)/$(DAEMON_NAME).log
-DAEMON_CMD_PIPE_NAME  = /var/run/$(DAEMON_NAME)/$(DAEMON_NAME).cmd
-DAEMON_MONITOR_LOG_FILE_NAME = /var/log/$(DAEMON_NAME)/monitor.log
-DAEMON_MONITOR_PID_FILE_NAME = /var/run/$(DAEMON_NAME)/monitor.pid
-DAEMON_MONITOR_SOCKET_FILE_NAME = /var/run/$(DAEMON_NAME)/balrogd.sock
-DAEMON_NO_CHDIR       = 1
-DAEMON_NO_FORK        = 0
-DAEMON_NO_CLOSE_STDIO = 1
+daemon:
+	@echo "\nBuilding daemon"
+	$(MAKE) -f $(DAEMON_MK) release
 
+debug:
+	@echo "\nBuilding daemon (debug)"
+	$(MAKE) -f $(DAEMON_MK) debug
+	@echo "\nBuilding client (debug)"
+	$(MAKE) -f $(CLIENT_MK) debug
 
-# process PATCH_VERSION
-COMMIT_HASH    = $(shell git rev-parse --short=12 HEAD)
-CHANGED_FILES  = $(shell git status --short --untracked-files=no | grep -c M)
-
-
-ifeq ($(strip $(DAEMON_PATCH_VERSION)), *hash)
-    ifeq ($(strip $(CHANGED_FILES)), 0)
-        DAEMON_PATCH_VERSION = $(COMMIT_HASH)
-    else
-        DAEMON_PATCH_VERSION = *$(COMMIT_HASH)
-    endif
-endif
-
-
-ifeq ($(strip $(DAEMON_PATCH_VERSION)), hash)
-    DAEMON_PATCH_VERSION = $(COMMIT_HASH)
-endif
-
-CFLAGS     = -DDAEMON_NAME='"$(DAEMON_NAME)"'
-CFLAGS    += -DDAEMON_MAJOR_VERSION=$(DAEMON_MAJOR_VERSION)
-CFLAGS    += -DDAEMON_MINOR_VERSION=$(DAEMON_MINOR_VERSION)
-CFLAGS    += -DDAEMON_PATCH_VERSION=$(DAEMON_PATCH_VERSION)
-CFLAGS    += -DDAEMON_PID_FILE_NAME='"$(DAEMON_PID_FILE_NAME)"'
-CFLAGS    += -DDAEMON_LOG_FILE_NAME='"$(DAEMON_LOG_FILE_NAME)"'
-CFLAGS	  += -DDAEMON_MONITOR_LOG_FILE_NAME='"$(DAEMON_MONITOR_LOG_FILE_NAME)"'
-CFLAGS	  += -DDAEMON_MONITOR_PID_FILE_NAME='"$(DAEMON_MONITOR_PID_FILE_NAME)"'
-CFLAGS	  += -DDAEMON_MONITOR_SOCKET_FILE_NAME='"$(DAEMON_MONITOR_SOCKET_FILE_NAME)"'
-CFLAGS    += -DDAEMON_CMD_PIPE_NAME='"$(DAEMON_CMD_PIPE_NAME)"'
-CFLAGS    += -DDAEMON_NO_CHDIR=$(DAEMON_NO_CHDIR)
-CFLAGS    += -DDAEMON_NO_FORK=$(DAEMON_NO_FORK)
-CFLAGS    += -DDAEMON_NO_CLOSE_STDIO=$(DAEMON_NO_CLOSE_STDIO)
-CFLAGS    += -DCOMMIT_HASH='"$(COMMIT_HASH)"'
-CFLAGS    += -DCHANGED_FILES=$(CHANGED_FILES)
-
-CFLAGS    += -I$(COMMON_DIR)
-CFLAGS    += -O2  -Wall  -pipe -Wextra -pedantic -std=c99
-CFLAGS    += -lpthread $(GLIB_LIBS) $(LIBNOTIFY_LIBS) $(LIBACL_LIBS)
-CFLAGS	  += $(LLIBUDEV)
-CFLAGS	  += $(DIRHEADERS)
-
-CC        ?=  gcc
-
-OUTPUT_DIR_RELEASE = output_release
-OUTPUT_DIR_DEBUG = output_debug
-CFILES = $(wildcard src/*.c)
-SOURCES  = $(CFILES)
-
-BASENAMES = $(notdir $(basename $(SOURCES)))
-DEBUG_SUFFIX   = debug
-
-#OBJECTS  := $(patsubst %.c, %.o, $(SOURCES) )
-RELEASE_OBJECTS := $(patsubst src/%.c, $(OUTPUT_DIR_RELEASE)/%.o, $(SOURCES))
-DEBUG_OBJECTS := $(patsubst src/%.c, $(OUTPUT_DIR_DEBUG)/%_$(DEBUG_SUFFIX).o, $(SOURCES))
-
-# patron suffix for debug objects
-
-#DEBUG_OBJECTS := $(patsubst %.o, %_$(DEBUG_SUFFIX).o, $(OBJECTS) )
-
-# Asegurar directorios de salida
-$(OUTPUT_DIR_DEBUG):
-	mkdir -p $@
-
-$(OUTPUT_DIR_RELEASE):
-	mkdir -p $@
-
-.PHONY: all
-all: debug release
-
-.PHONY: release
-release: $(OUTPUT_DIR_RELEASE)
-release: CFLAGS := -s  $(CFLAGS) # strip binary
-release: $(DAEMON_NAME) # build in release mode
-release: install
-
-.PHONY: debug
-debug: DAEMON_NO_CLOSE_STDIO = 1
-debug: $(OUTPUT_DIR_DEBUG)
-debug: CFLAGS := -DDEBUG  -g  $(CFLAGS) # add debug flag and debug symbols
-debug: $(DAEMON_NAME)_$(DEBUG_SUFFIX) # call build in debug mode
-
-# release mode
-$(DAEMON_NAME): .depend $(RELEASE_OBJECTS)
-	$(call build_bin, $(RELEASE_OBJECTS))
-
-# debug mode
-$(DAEMON_NAME)_$(DEBUG_SUFFIX): .depend $(DEBUG_OBJECTS)
-	$(call build_bin, $(DEBUG_OBJECTS))
-
-# Build release objects
-$(OUTPUT_DIR_RELEASE)/%.o: src/%.c | $(OUTPUT_DIR_RELEASE)
-	$(build_object)
-
-# Build debug objects
-$(OUTPUT_DIR_DEBUG)/%_$(DEBUG_SUFFIX).o: src/%.c | $(OUTPUT_DIR_DEBUG)
-	$(build_object)
-
-.PHONY: install
 install:
-# #DESTDIR viene del empaquetado DEB
-	install -D $(DAEMON_NAME) $(DESTDIR)/usr/bin/$(DAEMON_NAME)
-	install -D debian/balrog.service $(DESTDIR)/lib/systemd/user/balrog.service
-	install -D data/mono_autortizo_54px.jpg $(DESTDIR)/usr/share/icons/hicolor/48x48/apps/mono_autorizo_54px.png	
-	@echo "Installed $(DAEMON_NAME) to /usr/bin/$(DAEMON_NAME)"
+	@echo "\nInstalling Client"
+	$(MAKE) -f $(CLIENT_MK) install
+	@echo "\nInstalling Daemon"
+	$(MAKE) -f $(DAEMON_MK) install
 
-.PHONY: uninstall
 uninstall:
-	rm -f $(DESTDIR)/lib/systemd/user/balrog.service
-	rm -f $(DESTDIR)/usr/share/icons/hicolor/48x48/apps/mono_autorizo_54px.png
-	rm -f $(DESTDIR)/usr/bin/$(DAEMON_NAME)
-	@echo "Uninstalled $(DAEMON_NAME) from /usr/bin/$(DAEMON_NAME)"
+	@echo "\nUninstalling Client"
+	$(MAKE) -f $(CLIENT_MK) uninstall
+	@echo "\nUninstalling Daemon"
+	$(MAKE) -f $(DAEMON_MK) uninstall
 
 .PHONY: clean
 clean:
-	-@rm -f $(DAEMON_NAME)
-	-@rm -f $(DAEMON_NAME)_$(DEBUG_SUFFIX)
-	-@rm -fr $(OUTPUT_DIR_RELEASE)
-	-@rm -fr $(OUTPUT_DIR_DEBUG)
-	-@rm -f .depend
-	-@rm -f *.*~
+	@echo "\nCleaning Client and Daemon"
+	$(MAKE) -f $(CLIENT_MK) clean
+	$(MAKE) -f $(DAEMON_MK) clean
 
-.depend:
-	-@rm -f .depend
-	@echo "Generating dependencies..."
-	@for src in $(SOURCES) ; do  \
-		base=$$(basename $$src .c) \
-        echo "  [depend]  $$src" ; \
-        $(CC) $(GLIB_CFLAGS) $(LIBNOTIFY_CFLAGS) $(CFLAGS) -MT \
-		".depend $(OUTPUT_DIR_RELEASE)$$base.o $(OUTPUT_DIR_DEBUG)$$base_$(DEBUG_SUFFIX).o" \
-		-MM $$src >> .depend ; \
-    done
-
-
-ifeq "$(findstring $(MAKECMDGOALS),clean distclean)"  ""
-    include $(wildcard .depend)
-endif
-
-# Common commands
-BUILD_ECHO = echo "\n  [build]  $@:"
-
-define build_object
-    @$(BUILD_ECHO)
-    $(CC) -c $< -o $@ $(GLIB_CFLAGS) $(LIBNOTIFY_CFLAGS) $(CFLAGS)
-endef
-
-define build_bin
-    @$(BUILD_ECHO)
-    $(CC)  $1 -o $@ $(GLIB_CFLAGS) $(LIBNOTIFY_CFLAGS) $(CFLAGS)
-    @echo "\n---- Compiled $@ ver $(DAEMON_MAJOR_VERSION).$(DAEMON_MINOR_VERSION).$(DAEMON_PATCH_VERSION) ----\n"
-endef
+.PHONY: dist
+dist:
+	tar czf $(CLIENT_NAME)-$(DAEMON_MAJOR_VERSION).$(DAEMON_MINOR_VERSION).$(DAEMON_PATCH_VERSION).tar.gz	\
+	src include Makefile Config.mk Client.mk Daemon.mk debian data
 
 .PHONY: help
 help:
-	@echo "make [command]"
-	@echo "command is:"
-	@echo "   all     -  build daemon in release and debug mode"
-	@echo "   debug   -  build in debug mode (#define DEBUG 1)"
-	@echo "   release -  build in release mode (strip)"
-	@echo "   clean   -  remove all generated files"
-	@echo "   help    -  this help"
+	@echo "Usage:"
+	@echo "  make [target]"
+	@echo
+	@echo "Targets:"
+	@echo "  all         Build client + daemon (release)"
+	@echo "  client      Build only client (release)"
+	@echo "  daemon      Build only daemon (release)"
+	@echo "  debug       Build both in debug mode"
+	@echo "  install     Install both"
+	@echo "  uninstall   Uninstall both"
+	@echo "  clean       Remove all generated files"
+	@echo "  help        Show this message"
