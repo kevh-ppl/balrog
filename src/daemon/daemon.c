@@ -4,7 +4,7 @@
  * Licensed under the BDS-3 License.
  */
 
-#include "daemon.h"
+#include "daemon/daemon.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -18,8 +18,6 @@
 #include <sys/types.h>
 #include <syslog.h>
 #include <unistd.h>
-
-#include "balrog_udev.h"
 
 volatile struct daemon_info_t daemon_info = {
     // flag will be set in finale function daemonize()

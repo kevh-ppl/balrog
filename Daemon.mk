@@ -2,11 +2,11 @@ include Config.mk
 
 LDLIBS := -lpthread $(GLIB_LIBS) $(LIBNOTIFY_LIBS) $(LIBACL_LIBS) $(LLIBUDEV)
 
-DIRHEADERS := -Iinclude/daemon
-
-CFLAGS	  := $(DIRHEADERS)
+CFLAGS	  ?= $(DIRHEADERS)
 CFLAGS	  += $(COMPILER_CONFIG_CFLAGS)
 CFLAGS	  += $(CONFIG_C_FLAGS)
+CFLAGS	  += $(GLIB_CFLAGS)
+CFLAGS	  += $(LIBNOTIFY_CFLAGS)
 
 CFILES = $(wildcard src/daemon/*.c)
 SOURCES  = $(CFILES)

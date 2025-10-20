@@ -1,3 +1,5 @@
+DIRHEADERS := -Iinclude
+
 # LIBS
 GLIB_LIBS := $(shell pkg-config --libs glib-2.0)
 LIBNOTIFY_LIBS := $(shell pkg-config --libs libnotify)
