@@ -41,13 +41,13 @@ struct daemon_info_t {
 
 extern struct daemon_info_t daemon_info;
 
-struct Config_opt_t {
+typedef struct Config_opt_t {
     char* pid_file;
     char* cmd_pipe;
     char* monitor_pid_file;
     char* monitor_socket_file;
 
-} typedef Config_opt_t;
+} Config_opt_t;
 
 Config_opt_t config_opts = {.pid_file = "pid_file",
                             .cmd_pipe = "cmd_pipe",

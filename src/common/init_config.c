@@ -1,4 +1,4 @@
-#include "init_config.h"
+#include "common/init_config.h"
 
 #include <ctype.h>   //isspace
 #include <stdarg.h>  //vector args
@@ -57,6 +57,7 @@ struct daemon_info_t daemon_info = {
 #ifdef DAEMON_CMD_PIPE_NAME
     .cmd_pipe = DAEMON_CMD_PIPE_NAME,
 #endif
+    .fifo_user_path = "",
     .daemon_group = 0,
     .daemon_user = 0,
     .default_log_dir = "/var/log/balrogd/",
