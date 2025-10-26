@@ -7,7 +7,26 @@
 #include <string.h>  //strlen
 #include <unistd.h>
 
+#include "common/helpers.h"
+
 #define MAX_LINE 256
+
+static const char* client_header_config = "[client]";
+static const char* default_config_file_path = "/etc/balrog/balrogd.cnf";
+static const char* daemon_header_config = "[balrogd]";
+
+typedef struct Config_opt_t {
+    char* pid_file;
+    char* cmd_pipe;
+    char* monitor_pid_file;
+    char* monitor_socket_file;
+
+} Config_opt_t;
+
+static const Config_opt_t config_opts = {.pid_file = "pid_file",
+                                         .cmd_pipe = "cmd_pipe",
+                                         .monitor_pid_file = "monitor_pid_file",
+                                         .monitor_socket_file = "monitor_socket_file"};
 
 // client only needs access to the monitor socket patb and cmd pipe path
 
@@ -63,32 +82,13 @@ struct daemon_info_t daemon_info = {
     .default_log_dir = "/var/log/balrogd/",
     .default_run_dir = "/var/run/balrogd/"};
 
-int main() {
-    init_config();
-    printf("daemon_info.pid_file => %s\n", daemon_info.pid_file);
-    printf("daemon_info.cmd_pipe => %s\n", daemon_info.cmd_pipe);
-    printf("daemon_info.monitor_pid_file => %s\n", daemon_info.monitor_pid_file);
-    printf("daemon_info.monitor_socket_file => %s\n", daemon_info.monitor_socket_file);
-}
-
-/*
- * This function is used to exit the daemon with an error message.
- * It uses variable arguments to format the error message.
- * It will print the error message to stderr and then exit the daemon.
- * The exit status will be EXIT_FAILURE.
- */
-void daemon_error_exit(const char* format, ...) {
-    va_list ap;
-
-    if (format && *format) {
-        va_start(ap, format);
-        fprintf(stderr, "%s: ", "balrogd");
-        vfprintf(stderr, format, ap);
-        va_end(ap);
-    }
-
-    _exit(EXIT_FAILURE);
-}
+// int main() {
+//     init_config();
+//     printf("daemon_info.pid_file => %s\n", daemon_info.pid_file);
+//     printf("daemon_info.cmd_pipe => %s\n", daemon_info.cmd_pipe);
+//     printf("daemon_info.monitor_pid_file => %s\n", daemon_info.monitor_pid_file);
+//     printf("daemon_info.monitor_socket_file => %s\n", daemon_info.monitor_socket_file);
+// }
 
 /**
  * Trims spaces at start and end of string
@@ -150,7 +150,7 @@ static void do_assign_values(char* key, char* value) {
         return;
     }
 
-    daemon_error_exit("Error in config file\n");
+    error_exit("Error in config file\n");
 }
 
 static int init_parsing_config_file() {
@@ -161,7 +161,7 @@ static int init_parsing_config_file() {
         exit(EXIT_FAILURE);
     }
 
-    int damon_section;
+    int damon_section = 0;
     char line[MAX_LINE];
     while (fgets(line, MAX_LINE, config_file)) {
         trim(line);
@@ -183,7 +183,7 @@ static int init_parsing_config_file() {
                 continue;
             }
             // debe fallar y mostrar log
-            daemon_error_exit("Error in config file.\n");
+            error_exit("Error in config file.\n");
         }
 
         if (damon_section == 1) {
@@ -210,7 +210,6 @@ static int init_parsing_config_file() {
 void init_config() {
     // first i may check if config file exists
     //  if so i must read it and parse its content
-    printf("Config file path => %s\n", default_config_file_path);
     if (access(default_config_file_path, F_OK) == 0) {
         init_parsing_config_file();
     } else {

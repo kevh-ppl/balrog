@@ -1,4 +1,5 @@
-#include <glib-2.0/glib.h>
+#include "client/user_end_monitor.h"
+
 #include <libnotify/notify-features.h>
 #include <libnotify/notify.h>
 #include <pthread.h>
@@ -9,7 +10,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#include "daemon/daemon.h"
+#include "common/init_config.h"
 
 void* start_user_end_monitoring(void* args) {
     // pthread_detach(pthread_self());

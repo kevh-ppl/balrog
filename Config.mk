@@ -99,6 +99,12 @@ $(OUTPUT_DIR_DEBUG):
 $(OUTPUT_DIR_RELEASE):
 	mkdir -p $@
 
+release_common_dir_output: $(OUTPUT_DIR_DEBUG)
+	mkdir -p $(OUTPUT_DIR_RELEASE)/common
+
+debug_common_dir_output: $(OUTPUT_DIR_DEBUG)
+	mkdir -p $(OUTPUT_DIR_DEBUG)/common
+
 debug_client_dir_output: $(OUTPUT_DIR_DEBUG)
 	mkdir -p $(OUTPUT_DIR_DEBUG)/client
 

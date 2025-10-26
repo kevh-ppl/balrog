@@ -3,12 +3,18 @@
 #include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/file.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
-#include "daemon/daemon.h"
+#include "common/init_config.h"
+
+#define F_OK 0
 
 int main(int argc, char** argv) {
+    init_config();
+
     int fd_cmd_pipe = open(daemon_info.cmd_pipe, O_WRONLY);
     uid_t uid = getuid();
     if (!uid) printf("UID null, so we're 'monky'\n");
@@ -35,12 +41,12 @@ int main(int argc, char** argv) {
             _exit(EXIT_FAILURE);
         }
     }
-    // Creation of balrog dir
+    // Creation of fifo user
     char fifo_user_path[strlen(users_balrog_dir) + strlen(fifo_user_name) + 2];
     snprintf(fifo_user_path, sizeof(fifo_user_path), "%s/%s", users_balrog_dir, fifo_user_name);
 
     printf("fifo_user_path => %s\n", fifo_user_path);
-    daemon_info.fifo_user_path = fifo_user_path;
+    strncpy(daemon_info.fifo_user_path, fifo_user_path, sizeof(daemon_info.fifo_user_path) - 1);
 
     // Crear FIFO si no existe
     if (access(fifo_user_path, F_OK) == -1) {

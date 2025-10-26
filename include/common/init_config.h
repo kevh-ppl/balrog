@@ -41,22 +41,6 @@ struct daemon_info_t {
 
 extern struct daemon_info_t daemon_info;
 
-typedef struct Config_opt_t {
-    char* pid_file;
-    char* cmd_pipe;
-    char* monitor_pid_file;
-    char* monitor_socket_file;
-
-} Config_opt_t;
-
-Config_opt_t config_opts = {.pid_file = "pid_file",
-                            .cmd_pipe = "cmd_pipe",
-                            .monitor_pid_file = "monitor_pid_file",
-                            .monitor_socket_file = "monitor_socket_file"};
-
-char* client_header_config = "[client]";
-char* daemon_header_config = "[balrogd]";
-char* default_config_file_path = "/etc/balrog/balrogd.cnf";
 void init_config();
 
 #endif

@@ -1,10 +1,16 @@
-#define __GNU_SOURCE
-#include <daemon/daemon.h>
 #include <limits.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/file.h>
+#include <unistd.h>
+
+#include "client/user_end_monitor.h"
+#include "common/helpers.h"
+#include "common/init_config.h"
+
+#define PIPE_BUF 4096
 
 /*
 USER SIDE
@@ -14,16 +20,14 @@ Waits for the deamon response to the cmd
 static void wait_and_print_daemon_response(char* fifo_user_path) {
     char* response_buffer = malloc(PIPE_BUF);
     if (!response_buffer) {
-        perror("malloc");
-        return;
+        error_exit("malloc");
     }
     size_t buffer_size = PIPE_BUF;
     int fd_fifo_user = open(fifo_user_path, O_RDONLY);
 
     if (fd_fifo_user < 0) {
-        perror("open fifo_user_path");
         free(response_buffer);
-        return;
+        error_exit("open fifo_user_path");
     }
 
     size_t total_read = 0;
@@ -35,27 +39,25 @@ static void wait_and_print_daemon_response(char* fifo_user_path) {
             buffer_size *= 2;
             char* new_buffer = realloc(response_buffer, buffer_size);
             if (!new_buffer) {
-                perror("realloc");
                 free(response_buffer);
                 close(fd_fifo_user);
-                exit(EXIT_FAILURE);
+                error_exit("realloc");
             }
             response_buffer = new_buffer;
         }
     }
 
     if (bytes_read < 0) {
-        perror("read");
+        error_exit("read");
     }
 
     response_buffer[total_read] = '\0';
     // si la respuesta es del monitor, usuario ejecutor lanza notificación
 
     printf("%s", response_buffer);
-    printf("maduro es joto\n");
     close(fd_fifo_user);
     free(response_buffer);
-    return NULL;
+    return;
 }
 
 /*
@@ -71,8 +73,7 @@ void write_cmd_to_cmd_pipe(int argc, char* argv[], char* balrog_dir_user_path, c
                            unsigned long int uid) {
     int fd_cmd_pipe = open(daemon_info.cmd_pipe, O_WRONLY);
     if (fd_cmd_pipe == -1) {
-        perror("Error opening cmd pipe");
-        return;
+        error_exit("Error opening cmd pipe");
     }
 
     char cmd_line[PIPE_BUF] = {0};
@@ -124,7 +125,7 @@ void write_cmd_to_cmd_pipe(int argc, char* argv[], char* balrog_dir_user_path, c
             }
 
             pid_t pid_monitor_user_end = (pid_t)strtol(buf, NULL, 10);
-            printf("pid buf => %s | pid pid => %ld\n", buf, pid_monitor_user_end);
+            printf("pid buf => %s | pid pid => %d\n", buf, pid_monitor_user_end);
 
             if (kill(pid_monitor_user_end, SIGTERM) < 0) {
                 perror("Error sending SIGTERM to monitor");
@@ -140,11 +141,11 @@ void write_cmd_to_cmd_pipe(int argc, char* argv[], char* balrog_dir_user_path, c
                 exit(EXIT_FAILURE);
             }
             if (pid == 0) {
-                if (setsid() < 0) daemon_error_exit("Can't setsid: %m\n");
+                if (setsid() < 0) error_exit("Can't setsid: %m\n");
                 pid = fork();
-                if (pid < 0) daemon_error_exit("Segundo fork falló: %m\n");
+                if (pid < 0) error_exit("Segundo fork falló: %m\n");
                 if (pid > 0) exit(0);
-                if (chdir("/") != 0) daemon_error_exit("Can't chdir: %m\n");
+                if (chdir("/") != 0) error_exit("Can't chdir: %m\n");
                 freopen("/dev/null", "r", stdin);
                 freopen("/dev/null", "w", stdout);
                 freopen("/dev/null", "w", stderr);

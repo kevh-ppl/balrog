@@ -1,30 +1,39 @@
 include Config.mk
 
-LDLIBS := $(LIBNOTIFY_CFLAGS)
+LDLIBS := $(LIBNOTIFY_LIBS)
+LDLIBS += $(GLIB_LIBS)
 
 CFLAGS = $(DIRHEADERS)
 CFLAGS += $(COMPILER_CONFIG_CFLAGS)
 CFLAGS += $(CONFIG_C_FLAGS)
+CFLAGS += $(LIBNOTIFY_CFLAGS)
+CFLAGS += $(GLIB_CFLAGS)
 
-CFILES = $(wildcard src/client/*.c)
-SOURCES  = $(CFILES)
-BASENAMES = $(notdir $(basename $(SOURCES)))
+CFILES := $(wildcard src/client/*.c)
+CFILES_COMMON := $(wildcard src/common/*.c)
+SOURCES := $(CFILES) $(CFILES_COMMON)
+BASENAMES := $(notdir $(basename $(SOURCES)))
 
-RELEASE_OBJECTS := $(patsubst src/client/%.c, $(OUTPUT_DIR_RELEASE)/client/%.o, $(SOURCES))
-DEBUG_OBJECTS := $(patsubst src/client/%.c, $(OUTPUT_DIR_DEBUG)/%_$(DEBUG_SUFFIX).o, $(SOURCES))
+RELEASE_OBJECTS := \
+	$(patsubst src/client/%.c, $(OUTPUT_DIR_RELEASE)/client/%.o, $(CFILES)) \
+	$(patsubst src/common/%.c, $(OUTPUT_DIR_RELEASE)/common/%.o, $(CFILES_COMMON))
+
+DEBUG_OBJECTS := \
+	$(patsubst src/client/%.c, $(OUTPUT_DIR_DEBUG)/client/%_$(DEBUG_SUFFIX).o, $(CFILES)) \
+	$(patsubst src/common/%.c, $(OUTPUT_DIR_DEBUG)/common/%_$(DEBUG_SUFFIX).o, $(CFILES_COMMON))
 
 .PHONY: all
 all: debug release
 
 .PHONY: release
-release: release_client_dir_output
+release: release_client_dir_output release_common_dir_output
 release: CFLAGS := -s $(CFLAGS) # strip binary
 release: $(CLIENT_NAME) # build in release mode
 release: install
 
 .PHONY: debug
 debug: DAEMON_NO_CLOSE_STDIO = 1
-debug: debug_client_dir_output
+debug: debug_client_dir_output debug_common_dir_output
 debug: CFLAGS := -DDEBUG  -g  $(CFLAGS) # add debug flag and debug symbols
 debug: $(CLIENT_NAME)_$(DEBUG_SUFFIX) # call build in debug mode
 
@@ -40,8 +49,14 @@ $(CLIENT_NAME)_$(DEBUG_SUFFIX): .depend $(DEBUG_OBJECTS)
 $(OUTPUT_DIR_RELEASE)/client/%.o: src/client/%.c | $(OUTPUT_DIR_RELEASE)/client
 	$(build_object)
 
+$(OUTPUT_DIR_RELEASE)/common/%.o: src/common/%.c | $(OUTPUT_DIR_RELEASE)/common
+	$(build_object)
+
 # Build debug objects
 $(OUTPUT_DIR_DEBUG)/client/%_$(DEBUG_SUFFIX).o: src/client/%.c | $(OUTPUT_DIR_DEBUG)/client
+	$(build_object)
+
+$(OUTPUT_DIR_DEBUG)/common/%_$(DEBUG_SUFFIX).o: src/common/%.c | $(OUTPUT_DIR_DEBUG)/common
 	$(build_object)
 
 .PHONY: install
