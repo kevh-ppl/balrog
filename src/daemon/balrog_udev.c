@@ -15,8 +15,9 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#include "common/helpers.h"
+#include "common/init_config.h"
 #include "daemon/cmd_opt.h"
-#include "daemon/daemon.h"
 
 struct udev* udev = NULL;
 struct udev_enumerate* enumerator = NULL;
@@ -250,7 +251,7 @@ static int create_udev_usb_monitor() {
     printf("Udev monitor created succesfully at: %p\n", (void*)monitor);
     // filter to only get block devices for the monitor
     if (!udev_monitor_filter_add_match_subsystem_devtype(monitor, "usb", NULL)) {
-        // daemon_error_exit("Failed to add filter for udev monitor\n");
+        // error_exit("Failed to add filter for udev monitor\n");
         fprintf(stderr, "Failed to add filter for udev monitor\n");
         printf("Continuing without filter...\n");
     }
@@ -297,14 +298,14 @@ void* start_monitoring(void* args) {
     }
 
     int fd = (intptr_t)args;  // descriptor del cliente o similar
-    if (init_udev_context()) daemon_error_exit("Failed to initialize udev context\n");
+    if (init_udev_context()) error_exit("balrogd", "Failed to initialize udev context\n");
 
     int monitor_fd = set_monitor();
-    if (monitor_fd < 0) daemon_error_exit("Failed to set udev monitor\n");
+    if (monitor_fd < 0) error_exit("balrogd", "Failed to set udev monitor\n");
 
     // Crear socket UNIX
     int sock_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (sock_fd < 0) daemon_error_exit("socket failed\n");
+    if (sock_fd < 0) error_exit("balrogd", "socket failed\n");
 
     struct sockaddr_un addr;
     memset(&addr, 0, sizeof(addr));
@@ -312,18 +313,12 @@ void* start_monitoring(void* args) {
     strcpy(addr.sun_path, daemon_info.monitor_socket_file);
     unlink(addr.sun_path);  // borrar si ya existe
     if (bind(sock_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0)
-        daemon_error_exit("bind failed\n");
+        error_exit("balrogd", "bind failed\n");
     listen(sock_fd, 5);
 
     printf("Esperando conexión del cliente...\n");
     int client_fd = accept(sock_fd, NULL, NULL);
-    if (client_fd < 0) daemon_error_exit("accept failed\n");
-
-    int fd_monitor_log_file = open(daemon_info.monitor_log_file, O_WRONLY);
-    if (fd_monitor_log_file < 0) {
-        fprintf(stderr, "Error opening monitor log file: %m\n");
-        return NULL;
-    }
+    if (client_fd < 0) error_exit("balrogd", "accept failed\n");
 
     while (keep_monitoring) {
         fd_set fds;
@@ -357,7 +352,6 @@ void* start_monitoring(void* args) {
                 char msg[512];
                 snprintf(msg, sizeof(msg), "[%s] %s (%s)\n", action, node, subsystem);
 
-                write(fd_monitor_log_file, msg, strlen(msg));
                 write(client_fd, msg, strlen(msg));  // enviar al cliente
 
                 udev_device_unref(dev);
@@ -365,10 +359,9 @@ void* start_monitoring(void* args) {
         }
     }
 
-    close(fd_monitor_log_file);
     close(client_fd);
     close(sock_fd);
-    return NULL;
+    return;
 }
 
 /*

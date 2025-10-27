@@ -5,35 +5,37 @@ LDLIBS += $(GLIB_LIBS)
 
 CFLAGS = $(DIRHEADERS)
 CFLAGS += $(COMPILER_CONFIG_CFLAGS)
+CFLAGS	  += $(COMMON_INCLUDE_DIR)
 CFLAGS += $(CONFIG_C_FLAGS)
 CFLAGS += $(LIBNOTIFY_CFLAGS)
 CFLAGS += $(GLIB_CFLAGS)
 
 CFILES := $(wildcard src/client/*.c)
-CFILES_COMMON := $(wildcard src/common/*.c)
 SOURCES := $(CFILES) $(CFILES_COMMON)
 BASENAMES := $(notdir $(basename $(SOURCES)))
 
-RELEASE_OBJECTS := \
-	$(patsubst src/client/%.c, $(OUTPUT_DIR_RELEASE)/client/%.o, $(CFILES)) \
+RELEASE_OBJECTS ?= \
 	$(patsubst src/common/%.c, $(OUTPUT_DIR_RELEASE)/common/%.o, $(CFILES_COMMON))
 
-DEBUG_OBJECTS := \
-	$(patsubst src/client/%.c, $(OUTPUT_DIR_DEBUG)/client/%_$(DEBUG_SUFFIX).o, $(CFILES)) \
+RELEASE_OBJECTS += \
+	$(patsubst src/client/%.c, $(OUTPUT_DIR_RELEASE)/client/%.o, $(CFILES)) \
+
+DEBUG_OBJECTS ?= \
 	$(patsubst src/common/%.c, $(OUTPUT_DIR_DEBUG)/common/%_$(DEBUG_SUFFIX).o, $(CFILES_COMMON))
+
+DEBUG_OBJECTS += \
+	$(patsubst src/client/%.c, $(OUTPUT_DIR_DEBUG)/client/%_$(DEBUG_SUFFIX).o, $(CFILES)) \
 
 .PHONY: all
 all: debug release
 
 .PHONY: release
-release: release_client_dir_output release_common_dir_output
 release: CFLAGS := -s $(CFLAGS) # strip binary
 release: $(CLIENT_NAME) # build in release mode
 release: install
 
 .PHONY: debug
 debug: DAEMON_NO_CLOSE_STDIO = 1
-debug: debug_client_dir_output debug_common_dir_output
 debug: CFLAGS := -DDEBUG  -g  $(CFLAGS) # add debug flag and debug symbols
 debug: $(CLIENT_NAME)_$(DEBUG_SUFFIX) # call build in debug mode
 
@@ -83,6 +85,14 @@ clean:
 	-@rm -f .depend
 	@echo "Generating dependencies..."
 	@for src in $(SOURCES) ; do  \
+		base=$$(basename $$src .c) \
+        echo "  [depend]  $$src" ; \
+        $(CC) $(CFLAGS) -MT \
+		".depend $(OUTPUT_DIR_RELEASE)$$base.o $(OUTPUT_DIR_DEBUG)$$base_$(DEBUG_SUFFIX).o" \
+		-MM $$src >> .depend ; \
+    done
+
+	@for src in $(CFILES_COMMON) ; do  \
 		base=$$(basename $$src .c) \
         echo "  [depend]  $$src" ; \
         $(CC) $(CFLAGS) -MT \

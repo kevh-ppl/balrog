@@ -12,22 +12,22 @@
 
 #define PIPE_BUF 4096
 
-/*
-USER SIDE
-Waits for the deamon response to the cmd
-@param char* fifo_user_path
+/**
+    USER SIDE
+    Waits for the deamon response to the cmd
+    @param char* fifo_user_path
 */
 static void wait_and_print_daemon_response(char* fifo_user_path) {
     char* response_buffer = malloc(PIPE_BUF);
     if (!response_buffer) {
-        error_exit("malloc");
+        error_exit("balrog", "malloc");
     }
     size_t buffer_size = PIPE_BUF;
     int fd_fifo_user = open(fifo_user_path, O_RDONLY);
 
     if (fd_fifo_user < 0) {
         free(response_buffer);
-        error_exit("open fifo_user_path");
+        error_exit("balrog", "open fifo_user_path");
     }
 
     size_t total_read = 0;
@@ -41,14 +41,14 @@ static void wait_and_print_daemon_response(char* fifo_user_path) {
             if (!new_buffer) {
                 free(response_buffer);
                 close(fd_fifo_user);
-                error_exit("realloc");
+                error_exit("balrog", "realloc");
             }
             response_buffer = new_buffer;
         }
     }
 
     if (bytes_read < 0) {
-        error_exit("read");
+        error_exit("balrog", "read");
     }
 
     response_buffer[total_read] = '\0';
@@ -73,7 +73,7 @@ void write_cmd_to_cmd_pipe(int argc, char* argv[], char* balrog_dir_user_path, c
                            unsigned long int uid) {
     int fd_cmd_pipe = open(daemon_info.cmd_pipe, O_WRONLY);
     if (fd_cmd_pipe == -1) {
-        error_exit("Error opening cmd pipe");
+        error_exit("balrog", "Error opening cmd pipe");
     }
 
     char cmd_line[PIPE_BUF] = {0};
@@ -141,11 +141,11 @@ void write_cmd_to_cmd_pipe(int argc, char* argv[], char* balrog_dir_user_path, c
                 exit(EXIT_FAILURE);
             }
             if (pid == 0) {
-                if (setsid() < 0) error_exit("Can't setsid: %m\n");
+                if (setsid() < 0) error_exit("balrog", "Can't setsid: %m\n");
                 pid = fork();
-                if (pid < 0) error_exit("Segundo fork falló: %m\n");
+                if (pid < 0) error_exit("balrog", "Segundo fork falló: %m\n");
                 if (pid > 0) exit(0);
-                if (chdir("/") != 0) error_exit("Can't chdir: %m\n");
+                if (chdir("/") != 0) error_exit("balrog", "Can't chdir: %m\n");
                 freopen("/dev/null", "r", stdin);
                 freopen("/dev/null", "w", stdout);
                 freopen("/dev/null", "w", stderr);

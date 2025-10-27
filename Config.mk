@@ -68,11 +68,9 @@ COMPILER_CONFIG_CFLAGS    ?= -O2  -Wall  -pipe -Wextra -pedantic -std=c99
 
 OUTPUT_DIR_RELEASE ?= output_release
 OUTPUT_DIR_DEBUG ?= output_debug
-COMMON_INCLUDE_DIR ?= include
+COMMON_INCLUDE_DIR ?= -Iinclude
 COMMON_SRC_DIR     ?= src
 DEBUG_SUFFIX   ?= debug
-
-
 
 # INIT Common commands
 BUILD_ECHO = echo "\n  [build]  $@:"
@@ -116,6 +114,18 @@ debug_daemon_dir_output: $(OUTPUT_DIR_DEBUG)
 
 release_daemon_dir_output: $(OUTPUT_DIR_DEBUG)
 	mkdir -p $(OUTPUT_DIR_RELEASE)/daemon
+
+release: release_daemon_dir_output release_client_dir_output release_common_dir_output
+
+debug: debug_daemon_dir_output debug_client_dir_output debug_common_dir_output
+
+CFILES_COMMON := $(wildcard src/common/*.c)
+
+RELEASE_OBJECTS := \
+	$(patsubst src/common/%.c, $(OUTPUT_DIR_RELEASE)/common/%.o, $(CFILES_COMMON))
+
+DEBUG_OBJECTS := \
+	$(patsubst src/common/%.c, $(OUTPUT_DIR_DEBUG)/common/%_$(DEBUG_SUFFIX).o, $(CFILES_COMMON))
 
 # END Common commands
 

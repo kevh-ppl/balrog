@@ -82,14 +82,6 @@ struct daemon_info_t daemon_info = {
     .default_log_dir = "/var/log/balrogd/",
     .default_run_dir = "/var/run/balrogd/"};
 
-// int main() {
-//     init_config();
-//     printf("daemon_info.pid_file => %s\n", daemon_info.pid_file);
-//     printf("daemon_info.cmd_pipe => %s\n", daemon_info.cmd_pipe);
-//     printf("daemon_info.monitor_pid_file => %s\n", daemon_info.monitor_pid_file);
-//     printf("daemon_info.monitor_socket_file => %s\n", daemon_info.monitor_socket_file);
-// }
-
 /**
  * Trims spaces at start and end of string
  * @param char* str
@@ -150,7 +142,7 @@ static void do_assign_values(char* key, char* value) {
         return;
     }
 
-    error_exit("Error in config file\n");
+    error_exit("balrog-config", "Error in config file\n");
 }
 
 static int init_parsing_config_file() {
@@ -183,7 +175,7 @@ static int init_parsing_config_file() {
                 continue;
             }
             // debe fallar y mostrar log
-            error_exit("Error in config file.\n");
+            error_exit("balrog-config", "Error in config file.\n");
         }
 
         if (damon_section == 1) {

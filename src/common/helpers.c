@@ -14,12 +14,12 @@
  * It will print the error message to stderr and then exit the daemon.
  * The exit status will be EXIT_FAILURE.
  */
-void error_exit(const char* format, ...) {
+void error_exit(const char* unit, const char* format, ...) {
     va_list ap;
 
     if (format && *format) {
         va_start(ap, format);
-        fprintf(stderr, "%s: ", "balrog");
+        fprintf(stderr, "%s: ", unit);
         vfprintf(stderr, format, ap);
         size_t len = strlen(format);
         if (format[len - 1] != '\n') fprintf(stderr, "\n");

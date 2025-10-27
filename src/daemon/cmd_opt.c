@@ -18,6 +18,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "common/init_config.h"
 #include "daemon/balrog_udev.h"
 #include "daemon/daemon.h"
 
@@ -136,11 +137,9 @@ void processing_cmd(int argc, char* argv[]) {
     if (argc > 1) {
         fd_fifo_user = open(argv[argc - 2], O_WRONLY);
     }
-    fprintf("fd_fifo_user => %d\n", fd_fifo_user);
 
     if (argc > 1) {
-        char* fifo_user_path = argv[argc - 2];
-        fprintf("char *fifo_user_path = argv[argc - 2]; => %s\n", fifo_user_path);
+        char* fifo_user_path = argv[argc - 2];  // it must be -2 for fifo_path
     }
 
     while ((opt = getopt_long(argc, argv, short_opts, long_opts, NULL)) != -1) {
@@ -166,7 +165,7 @@ void processing_cmd(int argc, char* argv[]) {
                     write(fd_fifo_user, version, strlen(version));
                 } else {
                     // If no arguments are provided, print to stdout
-                    puts(version);
+                    printf("No fifo user: \n%s\n", version);
                 }
 
                 exit_if_not_daemonized(EXIT_SUCCESS);
@@ -207,7 +206,7 @@ void processing_cmd(int argc, char* argv[]) {
                     }
                     if (pthread_create(&pthread_monitoring, NULL, start_monitoring,
                                        (void*)(intptr_t)fd_fifo_user) != 0)
-                        daemon_error_exit("Can't create thread_cmd_pipe: %m\n");
+                        error_exit("Can't create thread_cmd_pipe: %m\n");
                 } else {
                     printf("Couldn't open fd_fifo_user: %m\n");
                 }
@@ -249,19 +248,20 @@ void processing_cmd(int argc, char* argv[]) {
                 break;
 
             case cmd_opt_pid_file:
-                daemon_info.pid_file = optarg;
+                strncpy(daemon_info.pid_file, optarg, sizeof(daemon_info.pid_file) - 1);
                 break;
 
             case cmd_opt_log_file:
-                daemon_info.log_file = optarg;
+                strncpy(daemon_info.log_file, optarg, sizeof(daemon_info.log_file) - 1);
                 break;
 
             case cmd_opt_monitor_log_file:
-                daemon_info.monitor_log_file = optarg;
+                strncpy(daemon_info.monitor_log_file, optarg,
+                        sizeof(daemon_info.monitor_log_file) - 1);
                 break;
 
             case cmd_opt_cmd_pipe:
-                daemon_info.cmd_pipe = optarg;
+                strncpy(daemon_info.cmd_pipe, optarg, sizeof(daemon_info.cmd_pipe) - 1);
                 break;
 
             default:
@@ -287,17 +287,17 @@ static void* cmd_pipe_thread(void* thread_arg) {
     unlink(daemon_info.cmd_pipe);
 
     argv = (char**)malloc(PIPE_BUF * sizeof(char*));
-    if (!argv) daemon_error_exit("Can't get mem for argv (CMD_PIPE): %m\n");
+    if (!argv) error_exit("balrogd", "Can't get mem for argv (CMD_PIPE)");
 
     cmd_pipe_buf = (char*)malloc(PIPE_BUF);
-    if (!cmd_pipe_buf) daemon_error_exit("Can't get mem for cmd_pipe_buf: %m\n");
+    if (!cmd_pipe_buf) error_exit("balrogd", "Can't get mem for cmd_pipe_buf");
 
-    if (mkfifo(daemon_info.cmd_pipe, 0622) != 0) daemon_error_exit("Can't create CMD_PIPE: %m\n");
+    if (mkfifo(daemon_info.cmd_pipe, 0622) != 0) error_exit("balrogd", "Can't create CMD_PIPE");
 
     fd = open(daemon_info.cmd_pipe,
               O_RDONLY | O_NONBLOCK);  // ok, O_NONBLOCK means that its gonna fail instead of trying
                                        // again the operation and the failure needs to be handled
-    if (fd == -1) daemon_error_exit("Can't open CMD_PIPE: %m\n");
+    if (fd == -1) error_exit("balrogd", "Can't open CMD_PIPE");
 
     while (1) {
         memset(cmd_pipe_buf, 0, PIPE_BUF);
@@ -309,14 +309,14 @@ static void* cmd_pipe_thread(void* thread_arg) {
 
         ssize_t bytes_read = read(fd, cmd_pipe_buf, PIPE_BUF);
 
-        if (bytes_read == -1) daemon_error_exit("read CMD_PIPE return -1: %m\n");
+        if (bytes_read == -1) error_exit("balrogd", "read CMD_PIPE return -1");
 
         if (bytes_read == 0) {
             // Fin de archivo: todos los writers cerraron
             close(fd);
             printf("cmd_pipe_thread() => daemon_info.cmd_pipe => %s\n", daemon_info.cmd_pipe);
             fd = open(daemon_info.cmd_pipe, O_RDONLY);
-            if (fd == -1) daemon_error_exit("Can't reopen CMD_PIPE: %m\n");
+            if (fd == -1) error_exit("balrogd", "Can't reopen CMD_PIPE");
             continue;
         }
 
@@ -339,7 +339,7 @@ void init_cmd_line(void* data) {
     init_signals();
 
     if (pthread_create(&pthread_cmd_pipe, NULL, cmd_pipe_thread, NULL) != 0)
-        daemon_error_exit("Can't create thread_cmd_pipe: %m\n");
+        error_exit("balrogd", "Can't create thread_cmd_pipe");
 
     // Here is your code to initialize
     // start_monitoring();

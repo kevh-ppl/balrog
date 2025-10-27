@@ -15,8 +15,9 @@ if [ -f /etc/default/balrog]; then
 fi
 
 if [ "$1" = "purge" ] || [ "$1" = "remove" ]; then
-    rm -rf /var/run/balrog
-    rm -rf /var/log/balrog
+    rm -rf /var/run/balrogd
+    rm -rf /var/log/balrogd
+    rm -rf /usr/bin/balrog*
     rm -rf "$UDEV_RULES_PATH"
     reload_udev_rules
 
@@ -35,8 +36,8 @@ if [ "$1" = "purge" ] || [ "$1" = "remove" ]; then
 fi
 
 if [ "$1" = "purge" ]; then
-    rm -rf /var/run/balrog
-    rm -rf /var/log/balrog
+    rm -rf /var/run/balrogd
+    rm -rf /var/log/balrogd
 fi
 
 exit 0
