@@ -5,6 +5,7 @@ balrog_udev_debug
 
 # Objetos compilados
 *.o
+.depend
 
 #
 *.pid
@@ -30,6 +31,7 @@ Makefile.deps
 balrog-sonar.properties
 
 # build DEB
+DEBIAN/
 debian/*.log
 debian/*.debhelper*
 debian/*.substvars
@@ -42,3 +44,6 @@ notes/
 
 # test scripts
 scripts/prueba
+
+# por ahora no quiero subir /helpers
+src/helpers/

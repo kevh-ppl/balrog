@@ -4,7 +4,7 @@
  * Licensed under the BDS-3 License.
  */
 
-#include "cmd_opt.h"
+#include "daemon/cmd_opt.h"
 
 #include <getopt.h>
 #include <limits.h>
@@ -18,15 +18,15 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "balrog_udev.h"
-#include "daemon.h"
-#include "user_end_monitor.h"
+#include "common/init_config.h"
+#include "daemon/balrog_udev.h"
+#include "daemon/daemon.h"
 
 pthread_t pthread_cmd_pipe;
 pthread_t pthread_user_end_monitoring;
 
 // Define the help string for balrog-usb-utility
-const char *help_str = DAEMON_NAME
+const char* help_str = DAEMON_NAME
     "\n"
     " Version: " DAEMON_VERSION_STR
     "\n\n"
@@ -72,7 +72,7 @@ enum {
     cmd_opt_cmd_pipe
 };
 
-static const char *short_opts = "hvemwp";
+static const char* short_opts = "hvemwp";
 static const struct option long_opts[] = {
     {"version", no_argument, NULL, cmd_opt_version},
     {"help", no_argument, NULL, cmd_opt_help},
@@ -94,8 +94,11 @@ static const struct option long_opts[] = {
 
 static void daemon_exit_handler(int sig) {
     // Here we release resources
+    // here i must delete balrog.cmd
 
     unlink(daemon_info.pid_file);
+    // it's not deleting the cmd_pipe because userside it's still using it
+    //
     unlink(daemon_info.cmd_pipe);
 
     _exit(EXIT_FAILURE);
@@ -114,211 +117,14 @@ static void init_signals(void) {
 }
 
 /*
-Waits for the deamon response to the cmd
-@param char* fifo_user_path
-*/
-static void wait_and_print_daemon_response(char *fifo_user_path) {
-    char *response_buffer = malloc(PIPE_BUF);
-    if (!response_buffer) {
-        perror("malloc");
-        return;
-    }
-    size_t buffer_size = PIPE_BUF;
-    int fd_fifo_user = open(fifo_user_path, O_RDONLY);
-
-    if (fd_fifo_user < 0) {
-        perror("open fifo_user_path");
-        free(response_buffer);
-        return;
-    }
-
-    size_t total_read = 0;
-    ssize_t bytes_read;
-    while ((bytes_read = read(fd_fifo_user, response_buffer + total_read,
-                              buffer_size - total_read - 1)) > 0) {
-        total_read += bytes_read;
-        if (total_read + 1 >= buffer_size) {
-            buffer_size *= 2;
-            char *new_buffer = realloc(response_buffer, buffer_size);
-            if (!new_buffer) {
-                perror("realloc");
-                free(response_buffer);
-                close(fd_fifo_user);
-                exit(EXIT_FAILURE);
-            }
-            response_buffer = new_buffer;
-        }
-    }
-
-    if (bytes_read < 0) {
-        perror("read");
-    }
-
-    response_buffer[total_read] = '\0';
-    // si la respuesta es del monitor, usuario ejecutor lanza notificación
-
-    printf("%s", response_buffer);
-    printf("maduro es joto\n");
-    close(fd_fifo_user);
-    free(response_buffer);
-    return NULL;
-}
-
-/*
-Writes the user's input command to the fifo_deamon and the triggers the wait for the response.
-It uses the args from the program and adds at the end the fifo_user_path the deamon should write the
-response.
-@param int argc
-@param char** argv
-@param char* fifo_user_path
-*/
-void write_cmd_to_cmd_pipe(int argc, char *argv[], char *balrog_dir_user_path, char *fifo_user_path,
-                           unsigned long int uid) {
-    int fd_cmd_pipe = open(daemon_info.cmd_pipe, O_WRONLY);
-    if (fd_cmd_pipe == -1) {
-        perror("Error opening cmd pipe");
-        return;
-    }
-
-    char cmd_line[PIPE_BUF] = {0};
-    int offset = 0;
-
-    // si opcion -m
-    int start_monitor = -1;
-    char *monitor_pid_name = "monitor.pid";
-    char monitor_pid_path[strlen(balrog_dir_user_path) + strlen(monitor_pid_name) + 2];
-    snprintf(monitor_pid_path, sizeof(monitor_pid_path), "%s/%s", balrog_dir_user_path,
-             monitor_pid_name);
-    printf("ahahah => %s\n", monitor_pid_path);
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-m") == 0 || strcmp(argv[i], "--start-monitor") == 0) {
-            // checar si existe $HOME/.balrog/monitor.pid
-            // si existe se debe lanzar mensaje de que ya se está monitoreando,
-            // si no hay que proceder a crear $HOME/.balrog/monitor.pid y
-            // hacer doble fork()
-
-            if (access(monitor_pid_path, F_OK) >= 0) {
-                printf("Already exists a monitor\n");
-                continue;
-            }
-            start_monitor = 0;
-        }
-        if (strcmp(argv[i], "-w") == 0 || strcmp(argv[i], "--stop-monitor") == 0) {
-            // si existe $HOME/.balrog/monitor.pid
-            // proceder escribiendo en cmd_pipe
-            // si no hay que lanzar mensaje de que no hay proceso de monitoreo que detener
-            if (access(monitor_pid_path, F_OK) < 0) {
-                printf(
-                    "It doesn't exists a monitor\nYou can create one by doing balrog -m or balrog "
-                    "--start-monitor\n");
-                continue;
-            }
-            int fd_monitor_pid_user_end = open(monitor_pid_path, O_RDONLY);
-            if (fd_monitor_pid_user_end < 0) {
-                perror("Error opening monitor.pid");
-                return;
-            }
-
-            char buf[32] = {0};
-            ssize_t n = read(fd_monitor_pid_user_end, buf, sizeof(buf) - 1);
-            close(fd_monitor_pid_user_end);
-
-            if (n <= 0) {
-                perror("Error reading monitor.pid");
-                return;
-            }
-
-            pid_t pid_monitor_user_end = (pid_t)strtol(buf, NULL, 10);
-            printf("pid buf => %s | pid pid => %ld\n", buf, pid_monitor_user_end);
-
-            if (kill(pid_monitor_user_end, SIGTERM) < 0) {
-                perror("Error sending SIGTERM to monitor");
-                return;
-            }
-            unlink(monitor_pid_path);
-        }
-
-        if (start_monitor == 0) {
-            pid_t pid = fork();
-            if (pid < 0) {
-                perror("fork");
-                exit(EXIT_FAILURE);
-            }
-            if (pid == 0) {
-                if (setsid() < 0) daemon_error_exit("Can't setsid: %m\n");
-                pid = fork();
-                if (pid < 0) daemon_error_exit("Segundo fork falló: %m\n");
-                if (pid > 0) exit(0);
-                if (chdir("/") != 0) daemon_error_exit("Can't chdir: %m\n");
-                freopen("/dev/null", "r", stdin);
-                freopen("/dev/null", "w", stdout);
-                freopen("/dev/null", "w", stderr);
-                if (create_pid_file(monitor_pid_path) < 0) {
-                    perror("Error creando monitor.pid");
-                    return;
-                }
-                start_user_end_monitoring(NULL);
-                exit(0);
-            }
-        }
-
-        // Añadir argumentos
-        for (int i = 1; i < argc; i++) {
-            int len = snprintf(cmd_line + offset, PIPE_BUF - offset, "%s ", argv[i]);
-            if (len < 0 || len >= PIPE_BUF - offset) {
-                fprintf(stderr, "Command line too long (argv)\n");
-                close(fd_cmd_pipe);
-                return;
-            }
-            offset += len;
-        }
-
-        // Añadir balrog_dir_user_path
-        int len = snprintf(cmd_line + offset, PIPE_BUF - offset, "%s ", balrog_dir_user_path);
-        if (len < 0 || len >= PIPE_BUF - offset) {
-            fprintf(stderr, "Command line too long (balrog_dir)\n");
-            close(fd_cmd_pipe);
-            return;
-        }
-        offset += len;
-
-        // Añadir fifo_user_path
-        len = snprintf(cmd_line + offset, PIPE_BUF - offset, "%s ", fifo_user_path);
-        if (len < 0 || len >= PIPE_BUF - offset) {
-            fprintf(stderr, "Command line too long (fifo_path)\n");
-            close(fd_cmd_pipe);
-            return;
-        }
-        offset += len;
-
-        // Añadir uid
-        len = snprintf(cmd_line + offset, PIPE_BUF - offset, "%lu\n", uid);
-        if (len < 0 || len >= PIPE_BUF - offset) {
-            fprintf(stderr, "Command line too long (uid)\n");
-            close(fd_cmd_pipe);
-            return;
-        }
-        offset += len;
-
-        printf("cmd_line => %s\n", cmd_line);
-
-        int bytes_written = write(fd_cmd_pipe, cmd_line, strlen(cmd_line));
-        printf("bytes_written => %d\n", bytes_written);
-        if (bytes_written == -1) perror("Couldn't write command into cmd pipe");
-
-        close(fd_cmd_pipe);
-        wait_and_print_daemon_response(fifo_user_path);
-    }
-}
-
-/*
+DEAMON SIDE
 Deamon always executes this function.
 It process the command written to the cnd_pipe ak fifo_deamon that does the work for
 the Inter Process Communication.
 @param int argc
 @param char** argv
  */
-void processing_cmd(int argc, char *argv[]) {
+void processing_cmd(int argc, char* argv[]) {
     int opt;
 
     // We use the processing_cmd function for processing the command line and
@@ -331,11 +137,9 @@ void processing_cmd(int argc, char *argv[]) {
     if (argc > 1) {
         fd_fifo_user = open(argv[argc - 2], O_WRONLY);
     }
-    printf("fd_fifo_user => %d\n", fd_fifo_user);
 
     if (argc > 1) {
-        char *fifo_user_path = argv[argc - 2];
-        printf("char *fifo_user_path = argv[argc - 2]; => %s\n", fifo_user_path);
+        char* fifo_user_path = argv[argc - 2];  // it must be -2 for fifo_path
     }
 
     while ((opt = getopt_long(argc, argv, short_opts, long_opts, NULL)) != -1) {
@@ -356,12 +160,12 @@ void processing_cmd(int argc, char *argv[]) {
                 break;
 
             case cmd_opt_version:
-                char *version = DAEMON_NAME " version " DAEMON_VERSION_STR "\n";
+                char* version = DAEMON_NAME " version " DAEMON_VERSION_STR "\n";
                 if (fd_fifo_user > 0) {
                     write(fd_fifo_user, version, strlen(version));
                 } else {
                     // If no arguments are provided, print to stdout
-                    puts(version);
+                    printf("No fifo user: \n%s\n", version);
                 }
 
                 exit_if_not_daemonized(EXIT_SUCCESS);
@@ -375,8 +179,8 @@ void processing_cmd(int argc, char *argv[]) {
 
             case cmd_print_udev_vars:
                 puts("Printing udev variables for debugging...");
-                printf("Udev context: %p\n", (void *)udev);
-                printf("Udev monitor: %p\n", (void *)monitor);
+                printf("Udev context: %p\n", (void*)udev);
+                printf("Udev monitor: %p\n", (void*)monitor);
                 break;
 
             case cmd_start_monitor:
@@ -401,8 +205,8 @@ void processing_cmd(int argc, char *argv[]) {
                         exit(EXIT_FAILURE);
                     }
                     if (pthread_create(&pthread_monitoring, NULL, start_monitoring,
-                                       (void *)(intptr_t)fd_fifo_user) != 0)
-                        daemon_error_exit("Can't create thread_cmd_pipe: %m\n");
+                                       (void*)(intptr_t)fd_fifo_user) != 0)
+                        error_exit("Can't create thread_cmd_pipe: %m\n");
                 } else {
                     printf("Couldn't open fd_fifo_user: %m\n");
                 }
@@ -416,7 +220,7 @@ void processing_cmd(int argc, char *argv[]) {
                 // snprintf(pid_monitor_file, 50, "%s/monitor_%s.pid", argv[argc - 3], argv[argc
                 // - 1]);
                 if (access(daemon_info.monitor_pid_file, F_OK) < 0) {
-                    char *msg_not_monitor_yet =
+                    char* msg_not_monitor_yet =
                         "It doesn't exists a monitor yet...\nYou can create one doing balrog "
                         "-m\n";
                     if (write(fd_fifo_user, msg_not_monitor_yet, strlen(msg_not_monitor_yet)) < 0) {
@@ -426,7 +230,7 @@ void processing_cmd(int argc, char *argv[]) {
                 }
                 unlink(daemon_info.monitor_pid_file);
                 stop_monitoring();
-                printf("Monitor udev pointer value: %p\n", (void *)monitor);
+                printf("Monitor udev pointer value: %p\n", (void*)monitor);
                 exit_if_not_daemonized(EXIT_SUCCESS);
                 break;
 
@@ -444,19 +248,20 @@ void processing_cmd(int argc, char *argv[]) {
                 break;
 
             case cmd_opt_pid_file:
-                daemon_info.pid_file = optarg;
+                strncpy(daemon_info.pid_file, optarg, sizeof(daemon_info.pid_file) - 1);
                 break;
 
             case cmd_opt_log_file:
-                daemon_info.log_file = optarg;
+                strncpy(daemon_info.log_file, optarg, sizeof(daemon_info.log_file) - 1);
                 break;
 
             case cmd_opt_monitor_log_file:
-                daemon_info.monitor_log_file = optarg;
+                strncpy(daemon_info.monitor_log_file, optarg,
+                        sizeof(daemon_info.monitor_log_file) - 1);
                 break;
 
             case cmd_opt_cmd_pipe:
-                daemon_info.cmd_pipe = optarg;
+                strncpy(daemon_info.cmd_pipe, optarg, sizeof(daemon_info.cmd_pipe) - 1);
                 break;
 
             default:
@@ -472,27 +277,27 @@ void processing_cmd(int argc, char *argv[]) {
 /*
 Loop that the pthread is gonna be running to get commands written in the cmd_pipe (fifo)
 */
-static void *cmd_pipe_thread(void *thread_arg) {
+static void* cmd_pipe_thread(void* thread_arg) {
     int fd;
     int argc;
-    char *arg;
-    char **argv;
-    char *cmd_pipe_buf;
+    char* arg;
+    char** argv;
+    char* cmd_pipe_buf;
 
     unlink(daemon_info.cmd_pipe);
 
-    argv = (char **)malloc(PIPE_BUF * sizeof(char *));
-    if (!argv) daemon_error_exit("Can't get mem for argv (CMD_PIPE): %m\n");
+    argv = (char**)malloc(PIPE_BUF * sizeof(char*));
+    if (!argv) error_exit("balrogd", "Can't get mem for argv (CMD_PIPE)");
 
-    cmd_pipe_buf = (char *)malloc(PIPE_BUF);
-    if (!cmd_pipe_buf) daemon_error_exit("Can't get mem for cmd_pipe_buf: %m\n");
+    cmd_pipe_buf = (char*)malloc(PIPE_BUF);
+    if (!cmd_pipe_buf) error_exit("balrogd", "Can't get mem for cmd_pipe_buf");
 
-    if (mkfifo(daemon_info.cmd_pipe, 0622) != 0) daemon_error_exit("Can't create CMD_PIPE: %m\n");
+    if (mkfifo(daemon_info.cmd_pipe, 0622) != 0) error_exit("balrogd", "Can't create CMD_PIPE");
 
     fd = open(daemon_info.cmd_pipe,
               O_RDONLY | O_NONBLOCK);  // ok, O_NONBLOCK means that its gonna fail instead of trying
                                        // again the operation and the failure needs to be handled
-    if (fd == -1) daemon_error_exit("Can't open CMD_PIPE: %m\n");
+    if (fd == -1) error_exit("balrogd", "Can't open CMD_PIPE");
 
     while (1) {
         memset(cmd_pipe_buf, 0, PIPE_BUF);
@@ -504,14 +309,14 @@ static void *cmd_pipe_thread(void *thread_arg) {
 
         ssize_t bytes_read = read(fd, cmd_pipe_buf, PIPE_BUF);
 
-        if (bytes_read == -1) daemon_error_exit("read CMD_PIPE return -1: %m\n");
+        if (bytes_read == -1) error_exit("balrogd", "read CMD_PIPE return -1");
 
         if (bytes_read == 0) {
             // Fin de archivo: todos los writers cerraron
             close(fd);
             printf("cmd_pipe_thread() => daemon_info.cmd_pipe => %s\n", daemon_info.cmd_pipe);
             fd = open(daemon_info.cmd_pipe, O_RDONLY);
-            if (fd == -1) daemon_error_exit("Can't reopen CMD_PIPE: %m\n");
+            if (fd == -1) error_exit("balrogd", "Can't reopen CMD_PIPE");
             continue;
         }
 
@@ -530,11 +335,11 @@ static void *cmd_pipe_thread(void *thread_arg) {
     return NULL;
 }
 
-void init_cmd_line(void *data) {
+void init_cmd_line(void* data) {
     init_signals();
 
     if (pthread_create(&pthread_cmd_pipe, NULL, cmd_pipe_thread, NULL) != 0)
-        daemon_error_exit("Can't create thread_cmd_pipe: %m\n");
+        error_exit("balrogd", "Can't create thread_cmd_pipe");
 
     // Here is your code to initialize
     // start_monitoring();
