@@ -10,7 +10,7 @@ reload_udev_rules() {
     echo done
 }
 
-if [ -f /etc/default/balrog]; then
+if [ -f /etc/default/balrog ]; then
     . /etc/default/balrog
 fi
 
@@ -18,8 +18,7 @@ if [ "$1" = "purge" ] || [ "$1" = "remove" ]; then
     rm -rf /var/run/balrogd
     rm -rf /var/log/balrogd
     rm -rf /usr/bin/balrog*
-    rm -rf "$UDEV_RULES_PATH"
-    reload_udev_rules
+
 
     if id -u balrogd >/dev/null 2>&1; then
         userdel -r balrogd || true
@@ -30,9 +29,20 @@ if [ "$1" = "purge" ] || [ "$1" = "remove" ]; then
     fi
 
     # delete balrog udev rules
-    if [ -f "$UDEV_RULES_PATH"]; then
+    if [ -f "$UDEV_RULES_PATH" ]; then
         rm -f "$UDEV_RULES_PATH"
+        reload_udev_rules
     fi
+
+
+    orig_user="${SUDO_USER:-${USER:-root}}"
+
+    user_home=$(getent passwd "$orig_user" | cut -d: -f6)
+
+    if [ -d "$user_home/.balrog/" ]; then
+        rm -rf "$user_home/.balrog/"
+    fi
+
 fi
 
 if [ "$1" = "purge" ]; then

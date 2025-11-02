@@ -98,7 +98,7 @@ if command -v systemctl >/dev/null 2>&1; then
     systemctl daemon-reload
     systemctl enable balrog.service
     systemctl start balrog.service || true
-    sudo balrog -m
+    sudo -u ${SUDO_USER:-${USER:-root}} balrog -m
 fi
 
 exit 0

@@ -93,10 +93,11 @@ void write_cmd_to_cmd_pipe(int argc, char* argv[], char* balrog_dir_user_path, c
             // si no hay que proceder a crear $HOME/.balrog/monitor.pid y
             // hacer doble fork()
 
-            if (access(monitor_pid_path, F_OK) >= 0) {
-                printf("Already exists a monitor\n");
-                continue;
-            }
+            // it may be better just to rewrite the monitor socket
+            //  if (access(monitor_pid_path, F_OK) >= 0) {
+            //      printf("Already exists a monitor\n");
+            //      continue;
+            //  }
             start_monitor = 0;
         }
         if (strcmp(argv[i], "-w") == 0 || strcmp(argv[i], "--stop-monitor") == 0) {
