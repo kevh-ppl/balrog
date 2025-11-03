@@ -189,12 +189,7 @@ void processing_cmd(int argc, char* argv[]) {
                     // snprintf(pid_monitor_file, 50, "%s/monitor_%s.pid", argv[argc - 3],
                     //          argv[argc - 1]);
                     if (access(daemon_info.monitor_pid_file, F_OK) >= 0) {
-                        char msg_monitor[60] =
-                            "Monitoreo de dispositivos USB ya se encuentra activo...\n";
-                        if (write(fd_fifo_user, msg_monitor, strlen(msg_monitor)) < 0) {
-                            printf("Couldn't write on fd_fifo_user: %m\n");
-                        }
-                        break;
+                        unlink(daemon_info.monitor_pid_file);
                     }
                     create_pid_file(daemon_info.monitor_pid_file);
 
