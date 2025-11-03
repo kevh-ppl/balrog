@@ -24,7 +24,7 @@ make debug
 
 You may want to use the prebuilt DEB package:
 
-[Download Balrog .deb](https://github.com/kevh-ppl/balrog/releases/download/dev-0.0.1/balrog_0.0-1_amd64.deb)
+[Download Balrog .deb](https://github.com/kevh-ppl/balrog/releases/download/v2025.11.03-43015bf/balrog_0.0-1_amd64.deb)
 
 ## Roadmap
 
