@@ -2,6 +2,8 @@
 balrog
 balrog_debug
 balrog_udev_debug
+balrogd
+balrogd_debug
 
 # Objetos compilados
 *.o
@@ -37,10 +39,10 @@ debian/*.debhelper*
 debian/*.substvars
 debian/tmp/
 debian/*-stamp
+!debian/etc
 
 # Notas
 notes/
-
 
 # test scripts
 scripts/prueba
