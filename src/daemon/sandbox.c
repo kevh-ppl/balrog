@@ -10,28 +10,20 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-static int pivot_root(char *new_root, char *old_root) {
+static int pivot_root(char* new_root, char* old_root) {
     return syscall(SYS_pivot_root, new_root, old_root);
 }
 
-static void die(char *msg) {
+static void die(char* msg) {
     perror(msg);
     exit(EXIT_FAILURE);
 }
 
-static void ensure_dir(char *dir, mode_t mode) {
+static void ensure_dir(char* dir, mode_t mode) {
     if (mkdir(dir, mode) == -1 && errno != EEXIST) die(dir);
 }
 
-int main(int argc, char **argv) {
-    if (argc < 3) {
-        fprintf(stderr, "USO: %s /dev/sd<x> <fstype> vfat|ext4|ext3|btrf>\n", argv[0]);
-        return 1;
-    }
-
-    const char *dev = argv[1];
-    const char *fstype = argv[2];
-
+int sandbox(const char* dev, const char* fstype) {
     printf("dev => %s\n", dev);
     printf("fstype => %s\n", fstype);
 
@@ -52,7 +44,7 @@ int main(int argc, char **argv) {
     // habiendo hecho esta disociación entre namespaces, ahora sí se puede crear un fs completamente
     // nuevo aprovechando el nuevo namespace, pero primero
     // se debe montar el tempfs para el dispositivo
-    char *host_dev = "/tmp/sbx-newroot";
+    char* host_dev = "/tmp/sbx-newroot";
     ensure_dir(host_dev, 0755);
     if (mount("tmpfs", host_dev, "tmpfs", MS_NOSUID | MS_NODEV, "size=256m") == -1)
         die("mount tmpfs");
@@ -131,7 +123,7 @@ int main(int argc, char **argv) {
 
     pid_t pid = fork();
     if (pid == 0) {
-        char *argv_shell[] = {"/bin/sh", NULL};
+        char* argv_shell[] = {"/bin/sh", NULL};
         execve("/bin/sh", argv_shell, NULL);
         _exit(1);
     }

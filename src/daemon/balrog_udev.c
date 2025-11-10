@@ -18,6 +18,7 @@
 #include "common/helpers.h"
 #include "common/init_config.h"
 #include "daemon/cmd_opt.h"
+#include "daemon/sandbox.h"
 
 struct udev* udev = NULL;
 struct udev_enumerate* enumerator = NULL;
@@ -250,7 +251,7 @@ static int create_udev_usb_monitor() {
     }
     printf("Udev monitor created succesfully at: %p\n", (void*)monitor);
     // filter to only get block devices for the monitor
-    if (!udev_monitor_filter_add_match_subsystem_devtype(monitor, "usb", NULL)) {
+    if (udev_monitor_filter_add_match_subsystem_devtype(monitor, "block", NULL) != 0) {
         // error_exit("Failed to add filter for udev monitor\n");
         fprintf(stderr, "Failed to add filter for udev monitor\n");
         printf("Continuing without filter...\n");
@@ -341,19 +342,30 @@ void* start_monitoring(void* args) {
         if (FD_ISSET(monitor_fd, &fds)) {
             struct udev_device* dev = udev_monitor_receive_device(monitor);
             if (dev) {
-                const char* action = udev_device_get_action(dev);
-                const char* node = udev_device_get_devnode(dev);
                 const char* subsystem = udev_device_get_subsystem(dev);
 
-                if (!action) action = "No action detected";
-                if (!node) node = "No node detected yet";
-                if (!subsystem) subsystem = "No subsystem";
+                // Solo enumeramos si es un dispositivo USB
+                if (subsystem && strcmp(subsystem, "block") == 0) {
+                    const char* action = udev_device_get_action(dev);
 
-                char msg[512];
-                snprintf(msg, sizeof(msg), "[%s] %s (%s)\n", action, node, subsystem);
+                    const char* node = udev_device_get_devnode(dev);
 
-                write(client_fd, msg, strlen(msg));  // enviar al cliente
+                    if (!action) action = "No action detected";
+                    if (!subsystem) subsystem = "No subsystem";
+                    if (!node) node = "No node detected yet";
 
+                    printf("Subsystem: %s\n", subsystem);
+                    printf("Action: %s\n", action);
+                    printf("Devnode: %s\n", node);
+
+                    // sandbox aquí
+                    // node = /dev/bus/usb/001/008
+
+                    char msg[512];
+                    snprintf(msg, sizeof(msg), "[%s] %s (%s)\n", action, node, subsystem);
+
+                    write(client_fd, msg, strlen(msg));  // enviar al cliente
+                }
                 udev_device_unref(dev);
             }
         }
