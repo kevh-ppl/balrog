@@ -321,6 +321,7 @@ void* start_monitoring(void* args) {
     int client_fd = accept(sock_fd, NULL, NULL);
     if (client_fd < 0) error_exit("balrogd", "accept failed\n");
 
+    int exits_sandbox = 0;
     while (keep_monitoring) {
         fd_set fds;
         FD_ZERO(&fds);
@@ -358,13 +359,17 @@ void* start_monitoring(void* args) {
                     printf("Action: %s\n", action);
                     printf("Devnode: %s\n", node);
 
-                    // sandbox aquí
-                    // node = /dev/bus/usb/001/008
-
                     char msg[512];
                     snprintf(msg, sizeof(msg), "[%s] %s (%s)\n", action, node, subsystem);
 
                     write(client_fd, msg, strlen(msg));  // enviar al cliente
+
+                    // sandbox aquí
+                    // node = /dev/bus/usb/001/008
+                    if (action && strcmp(action, "add") == 0 && exits_sandbox == 0) {
+                        sandbox(node, "vfat");
+                        exits_sandbox = 1;
+                    }
                 }
                 udev_device_unref(dev);
             }

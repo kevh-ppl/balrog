@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include <errno.h>
 #include <sched.h>
+#include <signal.h>  //pid_t
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,12 +11,14 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "common/helpers.h"
+
 static int pivot_root(char* new_root, char* old_root) {
     return syscall(SYS_pivot_root, new_root, old_root);
 }
 
 static void die(char* msg) {
-    perror(msg);
+    fprintf(stderr, "%s\n", msg);
     exit(EXIT_FAILURE);
 }
 
@@ -26,6 +29,24 @@ static void ensure_dir(char* dir, mode_t mode) {
 int sandbox(const char* dev, const char* fstype) {
     printf("dev => %s\n", dev);
     printf("fstype => %s\n", fstype);
+
+    // a fork to not mess with daemon
+    pid_t pid = fork();
+    if (pid < 0) {
+        error_exit("balrog", "Segundo fork falló: %m\n");
+    }
+    if (pid > 0) {
+        return 0;  // so caller does not continue
+    }
+    int fd_pid = create_pid_file("/var/run/balrogd/sandbox.pid");
+
+    if (setsid() < 0) error_exit("balrog", "Can't setsid: %m\n");
+    // no queiro matar el daemon
+    // if (pid > 0) exit(0);
+    if (chdir("/") != 0) error_exit("balrog", "Can't chdir: %m\n");
+    // freopen("/dev/null", "r", stdin);
+    // freopen("/dev/null", "w", stdout);
+    // freopen("/dev/null", "w", stderr);
 
     // nuevo namespace de montaje
     if (unshare(CLONE_NEWNS) == -1) die("unshare(CLONE_NEWNS)");
@@ -119,26 +140,26 @@ int sandbox(const char* dev, const char* fstype) {
     // aquí se puede bajar capacidades y limitar syscalls
     // ====================================================
 
-    printf("Sandbox listo. Dispositivo montado en /mnt/usb (RO, nosuid,nodev,noexec).\n");
+    fprintf(stdout, "Sandbox listo. Dispositivo montado en /mnt/usb (RO, nosuid,nodev,noexec).\n");
 
-    pid_t pid = fork();
-    if (pid == 0) {
+    pid_t pid_sandboxed = fork();
+    if (pid_sandboxed == 0) {
         char* argv_shell[] = {"/bin/sh", NULL};
         execve("/bin/sh", argv_shell, NULL);
         _exit(1);
     }
 
-    int status;
-    while (1) {
-        pid_t w = waitpid(-1, &status, 0);
-        if (w == -1) {
-            if (errno == EINTR) continue;
-            if (errno == ECHILD) continue;
-            perror("waitpid");
-            break;
-        }
-        printf("Proceso %d terminó con status %d\n", w, status);
-    }
+    // int status;
+    // while (1) {
+    //     pid_t w = waitpid(-1, &status, 0);
+    //     if (w == -1) {
+    //         if (errno == EINTR) continue;
+    //         if (errno == ECHILD) continue;
+    //         perror("waitpid");
+    //         break;
+    //     }
+    //     printf("Proceso %d terminó con status %d\n", w, status);
+    // }
 
     return 0;
 }
