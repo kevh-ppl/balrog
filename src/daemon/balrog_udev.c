@@ -18,7 +18,6 @@
 #include "common/helpers.h"
 #include "common/init_config.h"
 #include "daemon/cmd_opt.h"
-#include "daemon/sandbox.h"
 
 struct udev* udev = NULL;
 struct udev_enumerate* enumerator = NULL;
@@ -367,8 +366,12 @@ void* start_monitoring(void* args) {
                     // sandbox aquí
                     // node = /dev/bus/usb/001/008
                     if (action && strcmp(action, "add") == 0 && exits_sandbox == 0) {
-                        sandbox(node, "vfat");
-                        exits_sandbox = 1;
+                        pid_t pid_sandbox = fork();
+                        if (pid_sandbox == 0) {
+                            execl("/usr/local/bin/sand_help", "sand_help",
+                                  "/usr/local/bin/sand_setup", node, "vfat", "/bin/sh", NULL);
+                            exits_sandbox = 1;
+                        }
                     }
                 }
                 udev_device_unref(dev);

@@ -93,6 +93,9 @@ create_env_file
 create_udev_rules_file
 reload_udev_rules
 
+#postins
+sudo setcap cap_sys_admin+ep /usr/local/bin/sand_help
+
 # Habilitar y arrancar el servicio systemd
 if command -v systemctl >/dev/null 2>&1; then
     systemctl daemon-reload

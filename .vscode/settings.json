@@ -20,6 +20,8 @@
     "types.h": "c",
     "notify-features.h": "c",
     "user_end_monitor.h": "c",
-    "init_config.h": "c"
+    "init_config.h": "c",
+    "helpers.h": "c",
+    "sandbox.h": "c"
   }
 }

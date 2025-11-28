@@ -2,6 +2,7 @@ include Config.mk
 
 CLIENT_MK := Client.mk
 DAEMON_MK := Daemon.mk
+SAND_HELP := Sandbox.mk
 
 all: client daemon
 
@@ -12,6 +13,7 @@ client:
 daemon:
 	@echo "\nBuilding daemon"
 	$(MAKE) -f $(DAEMON_MK) release
+	$(MAKE) -f $(SAND_HELP) install
 
 debug:
 	@echo "\nBuilding daemon (debug)"
@@ -36,6 +38,7 @@ clean:
 	@echo "\nCleaning Client and Daemon"
 	$(MAKE) -f $(CLIENT_MK) clean
 	$(MAKE) -f $(DAEMON_MK) clean
+	$(MAKE) -f $(SAND_HELP) clean
 
 .PHONY: dist
 dist:
