@@ -17,6 +17,7 @@
 #include <sys/select.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>  //for fork()
 
 #include "common/init_config.h"
 #include "daemon/balrog_udev.h"
@@ -63,7 +64,7 @@ enum {
     cmd_start_monitor = 'm',
     cmd_stop_monitor = 'w',
     cmd_print_udev_vars = 'p',
-    cmd_shell_dev = 's',
+    cmd_shell_dev = 's:',
     cmd_print_nodes = 'n',
 
     // daemon options (start from a value outside ASCII range)
@@ -76,7 +77,7 @@ enum {
     cmd_opt_cmd_pipe
 };
 
-static const char* short_opts = "hvemwpsn";
+static const char* short_opts = "hvemwpns:";
 static const struct option long_opts[] = {
     {"version", no_argument, NULL, cmd_opt_version},
     {"help", no_argument, NULL, cmd_opt_help},
@@ -84,7 +85,7 @@ static const struct option long_opts[] = {
     {"start-monitor", no_argument, NULL, cmd_start_monitor},
     {"stop-monitor", no_argument, NULL, cmd_stop_monitor},
     {"print-udev-vars", no_argument, NULL, cmd_print_udev_vars},
-    {"shell", no_argument, NULL, cmd_shell_dev},
+    {"shell", required_argument, NULL, cmd_shell_dev},
     {"nodes", no_argument, NULL, cmd_print_nodes},
 
     // daemon options
@@ -137,7 +138,7 @@ void processing_cmd(int argc, char* argv[]) {
     // for commands from the DAEMON_CMD_PIPE_NAME
     // For this we use the getopt_long function several times
     // to work properly, we must reset the optind
-    optind = 0;
+    optind = 1;
 
     int fd_fifo_user = -1;
     if (argc > 1) {
@@ -267,6 +268,19 @@ void processing_cmd(int argc, char* argv[]) {
                 break;
 
             case cmd_shell_dev:
+                if (!optarg) {
+                    char* msg = "Missing argument: devnode path </dev/sdx>\n";
+                    write(fd_fifo_user, msg, strlen(msg));
+                }
+                char optarg_cpy[4096];
+                strncpy(optarg_cpy, optarg, sizeof(optarg_cpy) - 1);
+                fprintf(stderr, "optarg => %s", optarg);
+
+                pid_t pid_sandbox = fork();
+                if (pid_sandbox == 0) {
+                    execl("/usr/local/bin/sand_help", "sand_help", "/usr/local/bin/sand_setup",
+                          optarg, "vfat", "/bin/sh", NULL);
+                }
                 break;
 
             // daemon options
@@ -355,11 +369,12 @@ static void* cmd_pipe_thread(void* thread_arg) {
             continue;
         }
 
-        argc = 1;  // see getopt_long function
+        argc = 0;  // see getopt_long function
+        argv[argc++] = "balrog";
         arg = strtok(cmd_pipe_buf, " \t\n");
 
         while ((arg != NULL) && (argc < PIPE_BUF)) {
-            printf("arg => %s\n", arg);
+            fprintf(stderr, "arg => %s\n", arg);
             argv[argc++] = arg;
             arg = strtok(NULL, " \t\n");
         }
