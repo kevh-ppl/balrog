@@ -201,7 +201,7 @@ void write_cmd_to_cmd_pipe(int argc, char* argv[], char* balrog_dir_user_path, c
 
         int bytes_written = write(fd_cmd_pipe, cmd_line, strlen(cmd_line));
         printf("bytes_written => %d\n", bytes_written);
-        if (bytes_written == -1) perror("Couldn't write command into cmd pipe");
+        if (bytes_written == -1) error_exit("balrog", "Couldn't write command into cmd pipe");
 
         close(fd_cmd_pipe);
         wait_and_print_daemon_response(fifo_user_path);

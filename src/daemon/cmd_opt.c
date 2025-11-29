@@ -17,7 +17,9 @@
 #include <sys/select.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>  //for fork()
 
+#include "common/helpers.h"
 #include "common/init_config.h"
 #include "daemon/balrog_udev.h"
 #include "daemon/daemon.h"
@@ -46,6 +48,8 @@ const char* help_str = DAEMON_NAME
     "       --pid-file [value]          Set pid file name\n"
     "       --log-file-path [value]     Set log file name\n"
     "       --cm-pipe [value]           Set CMD Pipe name\n"
+    "  -s   --shell <devpath>           Run sandbox for devpath and get an interactive shell\n"
+    "  -n   --nodes                     Print devnodes attached"
     "  -p,  --print-udev-vars           Print udev vars for debugging\n"
     "  -e,  --enumerate                 Enumerates all block (storage) devices\n"
     "  -m,  --start-monitor             Starts monitoring USB devices related IO events\n"
@@ -61,6 +65,8 @@ enum {
     cmd_start_monitor = 'm',
     cmd_stop_monitor = 'w',
     cmd_print_udev_vars = 'p',
+    cmd_shell_dev = 's:',
+    cmd_print_nodes = 'n',
 
     // daemon options (start from a value outside ASCII range)
     cmd_opt_no_chdir = 1000,
@@ -72,7 +78,7 @@ enum {
     cmd_opt_cmd_pipe
 };
 
-static const char* short_opts = "hvemwp";
+static const char* short_opts = "hvemwpns:";
 static const struct option long_opts[] = {
     {"version", no_argument, NULL, cmd_opt_version},
     {"help", no_argument, NULL, cmd_opt_help},
@@ -80,6 +86,8 @@ static const struct option long_opts[] = {
     {"start-monitor", no_argument, NULL, cmd_start_monitor},
     {"stop-monitor", no_argument, NULL, cmd_stop_monitor},
     {"print-udev-vars", no_argument, NULL, cmd_print_udev_vars},
+    {"shell", required_argument, NULL, cmd_shell_dev},
+    {"nodes", no_argument, NULL, cmd_print_nodes},
 
     // daemon options
     {"no-chdir", no_argument, NULL, cmd_opt_no_chdir},
@@ -131,7 +139,7 @@ void processing_cmd(int argc, char* argv[]) {
     // for commands from the DAEMON_CMD_PIPE_NAME
     // For this we use the getopt_long function several times
     // to work properly, we must reset the optind
-    optind = 0;
+    optind = 1;
 
     int fd_fifo_user = -1;
     if (argc > 1) {
@@ -143,7 +151,7 @@ void processing_cmd(int argc, char* argv[]) {
     }
 
     while ((opt = getopt_long(argc, argv, short_opts, long_opts, NULL)) != -1) {
-        printf("opt => %d\n", opt);
+        fprintf(stderr, "opt => %d\n", opt);
         switch (opt) {
             case cmd_opt_help:
                 // the last arg is always the fifo_user_path to write the output
@@ -201,7 +209,7 @@ void processing_cmd(int argc, char* argv[]) {
                     }
                     if (pthread_create(&pthread_monitoring, NULL, start_monitoring,
                                        (void*)(intptr_t)fd_fifo_user) != 0)
-                        error_exit("Can't create thread_cmd_pipe: %m\n");
+                        error_exit("balrogd", "Can't create thread_cmd_pipe: %m\n");
                 } else {
                     printf("Couldn't open fd_fifo_user: %m\n");
                 }
@@ -227,6 +235,55 @@ void processing_cmd(int argc, char* argv[]) {
                 stop_monitoring();
                 printf("Monitor udev pointer value: %p\n", (void*)monitor);
                 exit_if_not_daemonized(EXIT_SUCCESS);
+                break;
+
+            case cmd_print_nodes:
+                fprintf(stderr, "devs_paths = %p\n", (void*)devs_paths);
+                fprintf(stderr, "devs_paths_index => %d", devs_paths_index);
+                char output[4096];
+                output[0] = '\0';
+                int offset = 0;
+
+                for (int i = 0; i < devs_paths_index; i++) {
+                    int written =
+                        snprintf(output + offset, sizeof(output) - offset, "%s\n", devs_paths[i]);
+
+                    if (written < 0 || written >= sizeof(output) - offset) {
+                        // Se llenó el buffer
+                        fprintf(stderr, "balrog --shell: Se llenó el buffer");
+                        break;
+                    }
+
+                    offset += written;
+                }
+
+                if (write(fd_fifo_user, output, offset) < 0) {
+                    fprintf(stderr, "balrog --shell Error writting...");
+                }
+                fprintf(stderr, "---- dumping devs_paths ----\n");
+                for (int i = 0; i < devs_paths_index; i++) {
+                    fprintf(stderr, "[%d] ptr=%p\n", i, (void*)devs_paths[i]);
+                    if (devs_paths[i]) fprintf(stderr, "val='%s'\n", devs_paths[i]);
+                }
+                fprintf(stderr, "---------------------------\n");
+                break;
+
+            case cmd_shell_dev:
+                if (!optarg) {
+                    char* msg = "Missing argument: devnode path </dev/sdx>\n";
+                    write(fd_fifo_user, msg, strlen(msg));
+                }
+                char optarg_cpy[4096];
+                strncpy(optarg_cpy, optarg, sizeof(optarg_cpy) - 1);
+                fprintf(stderr, "optarg => %s", optarg);
+
+                pid_t pid_sandbox = fork();
+                fprintf(stderr, "pid_sandbox %d", (int)pid_sandbox);
+                create_pid_file("sandbox.pid");
+                if (pid_sandbox == 0) {
+                    execl("/usr/local/bin/sand_help", "sand_help", "/usr/local/bin/sand_setup",
+                          optarg, "vfat", "/bin/sh", NULL);
+                }
                 break;
 
             // daemon options
@@ -315,11 +372,12 @@ static void* cmd_pipe_thread(void* thread_arg) {
             continue;
         }
 
-        argc = 1;  // see getopt_long function
+        argc = 0;  // see getopt_long function
+        argv[argc++] = "balrog";
         arg = strtok(cmd_pipe_buf, " \t\n");
 
         while ((arg != NULL) && (argc < PIPE_BUF)) {
-            printf("arg => %s\n", arg);
+            fprintf(stderr, "arg => %s\n", arg);
             argv[argc++] = arg;
             arg = strtok(NULL, " \t\n");
         }

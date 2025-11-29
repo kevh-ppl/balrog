@@ -18,6 +18,8 @@ if [ "$1" = "purge" ] || [ "$1" = "remove" ]; then
     rm -rf /var/run/balrogd
     rm -rf /var/log/balrogd
     rm -rf /usr/bin/balrog*
+    rm -rf /usr/local/bin/sand_setup
+    rm -rf /usr/local/bin/balrog-shell
 
 
     if id -u balrogd >/dev/null 2>&1; then

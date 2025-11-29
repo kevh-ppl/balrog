@@ -27,6 +27,8 @@ struct udev_monitor* monitor = NULL;
 pthread_t pthread_monitoring;
 volatile sig_atomic_t keep_monitoring = 1;
 int exit_pipe[2];
+char* devs_paths[50] = {0};
+int devs_paths_index = 0;
 
 int init_udev_context() {
     udev = udev_new();  // declared in enumerate.h
@@ -250,7 +252,7 @@ static int create_udev_usb_monitor() {
     }
     printf("Udev monitor created succesfully at: %p\n", (void*)monitor);
     // filter to only get block devices for the monitor
-    if (!udev_monitor_filter_add_match_subsystem_devtype(monitor, "usb", NULL)) {
+    if (udev_monitor_filter_add_match_subsystem_devtype(monitor, "block", NULL) != 0) {
         // error_exit("Failed to add filter for udev monitor\n");
         fprintf(stderr, "Failed to add filter for udev monitor\n");
         printf("Continuing without filter...\n");
@@ -320,6 +322,7 @@ void* start_monitoring(void* args) {
     int client_fd = accept(sock_fd, NULL, NULL);
     if (client_fd < 0) error_exit("balrogd", "accept failed\n");
 
+    int exits_sandbox = 0;
     while (keep_monitoring) {
         fd_set fds;
         FD_ZERO(&fds);
@@ -341,24 +344,75 @@ void* start_monitoring(void* args) {
         if (FD_ISSET(monitor_fd, &fds)) {
             struct udev_device* dev = udev_monitor_receive_device(monitor);
             if (dev) {
-                const char* action = udev_device_get_action(dev);
-                const char* node = udev_device_get_devnode(dev);
                 const char* subsystem = udev_device_get_subsystem(dev);
 
-                if (!action) action = "No action detected";
-                if (!node) node = "No node detected yet";
-                if (!subsystem) subsystem = "No subsystem";
+                // Solo enumeramos si es un dispositivo USB
+                if (subsystem && strcmp(subsystem, "block") == 0) {
+                    const char* action = udev_device_get_action(dev);
 
-                char msg[512];
-                snprintf(msg, sizeof(msg), "[%s] %s (%s)\n", action, node, subsystem);
+                    const char* node = udev_device_get_devnode(dev);
 
-                write(client_fd, msg, strlen(msg));  // enviar al cliente
+                    if (!action) action = "No action detected";
+                    if (!subsystem) subsystem = "No subsystem";
+                    if (!node) node = "No node detected yet";
 
+                    printf("Subsystem: %s\n", subsystem);
+                    printf("Action: %s\n", action);
+                    printf("Devnode: %s\n", node);
+
+                    char msg[512];
+                    snprintf(msg, sizeof(msg), "[%s] %s (%s)\n", action, node, subsystem);
+
+                    write(client_fd, msg, strlen(msg));  // enviar al cliente
+
+                    // sandbox aquí
+                    // node = /dev/bus/usb/001/008
+                    if (action && strcmp(action, "add") == 0 && exits_sandbox == 0) {
+                        // pid_t pid_sandbox = fork();
+                        // if (pid_sandbox == 0) {
+                        //     execl("/usr/local/bin/sand_help", "sand_help",
+                        //           "/usr/local/bin/sand_setup", node, "vfat", "/bin/sh", NULL);
+                        //     exits_sandbox = 1;
+                        // }
+                        // instead i gotta save the node path into a data structure
+                        if (devs_paths_index < 50) {
+                            if (!node) {
+                                fprintf(stderr, "NULL node\n");
+                                continue;
+                            }
+
+                            fprintf(stderr, "devs_paths_index => %d\n", devs_paths_index);
+                            fprintf(stderr, "node aaa => %s\n", node);
+
+                            size_t len = strlen(node);
+                            fprintf(stderr, "about to malloc %zu bytes\n", len + 1);
+
+                            char* copy = malloc(len + 1);
+                            if (!copy) {
+                                perror("malloc for device path failed");
+                                continue;
+                            }
+                            memcpy(copy, node, len);
+                            copy[len] = '\0';
+
+                            fprintf(stderr, "copy=%p '%s'\n", (void*)copy, copy);
+
+                            devs_paths[devs_paths_index] = copy;
+                            devs_paths_index++;
+
+                            fprintf(stderr, "Dev from monitor => %s | index %d\n",
+                                    devs_paths[devs_paths_index - 1], devs_paths_index - 1);
+                        }
+                    }
+                }
                 udev_device_unref(dev);
             }
         }
     }
 
+    for (int i = 0; i < devs_paths_index; i++) {
+        free(devs_paths[i]);
+    }
     close(client_fd);
     close(sock_fd);
     return;
