@@ -46,6 +46,7 @@ const char* help_str = DAEMON_NAME
     "       --pid-file [value]          Set pid file name\n"
     "       --log-file-path [value]     Set log file name\n"
     "       --cm-pipe [value]           Set CMD Pipe name\n"
+    "  -s   --shell <devpath>           Run sandbox for devpath and get an interactive shell\n"
     "  -p,  --print-udev-vars           Print udev vars for debugging\n"
     "  -e,  --enumerate                 Enumerates all block (storage) devices\n"
     "  -m,  --start-monitor             Starts monitoring USB devices related IO events\n"
@@ -61,6 +62,7 @@ enum {
     cmd_start_monitor = 'm',
     cmd_stop_monitor = 'w',
     cmd_print_udev_vars = 'p',
+    cmd_shell_dev = 's',
 
     // daemon options (start from a value outside ASCII range)
     cmd_opt_no_chdir = 1000,
@@ -72,7 +74,7 @@ enum {
     cmd_opt_cmd_pipe
 };
 
-static const char* short_opts = "hvemwp";
+static const char* short_opts = "hvemwps";
 static const struct option long_opts[] = {
     {"version", no_argument, NULL, cmd_opt_version},
     {"help", no_argument, NULL, cmd_opt_help},
@@ -80,6 +82,7 @@ static const struct option long_opts[] = {
     {"start-monitor", no_argument, NULL, cmd_start_monitor},
     {"stop-monitor", no_argument, NULL, cmd_stop_monitor},
     {"print-udev-vars", no_argument, NULL, cmd_print_udev_vars},
+    {"shell", no_argument, NULL, cmd_shell_dev},
 
     // daemon options
     {"no-chdir", no_argument, NULL, cmd_opt_no_chdir},
@@ -143,7 +146,7 @@ void processing_cmd(int argc, char* argv[]) {
     }
 
     while ((opt = getopt_long(argc, argv, short_opts, long_opts, NULL)) != -1) {
-        printf("opt => %d\n", opt);
+        fprintf(stderr, "opt => %d\n", opt);
         switch (opt) {
             case cmd_opt_help:
                 // the last arg is always the fifo_user_path to write the output
@@ -227,6 +230,23 @@ void processing_cmd(int argc, char* argv[]) {
                 stop_monitoring();
                 printf("Monitor udev pointer value: %p\n", (void*)monitor);
                 exit_if_not_daemonized(EXIT_SUCCESS);
+                break;
+
+            case cmd_shell_dev:
+                // fprintf(stderr, "devs_paths = %p\n", (void*)devs_paths);
+                // fprintf(stderr, "devs_paths_index => %d", devs_paths_index);
+                // for (int i = 0; i < devs_paths_index; i++) {
+                //     if (write(fd_fifo_user, devs_paths[i], strlen(devs_paths[i])) < 0) {
+                //         fprintf(stderr, "balrog --shell Error writting...");
+                //     }
+                // }
+                // break;
+                fprintf(stderr, "---- dumping devs_paths ----\n");
+                for (int i = 0; i < devs_paths_index; i++) {
+                    fprintf(stderr, "[%d] ptr=%p\n", i, (void*)devs_paths[i]);
+                    if (devs_paths[i]) fprintf(stderr, "val='%s'\n", devs_paths[i]);
+                }
+                fprintf(stderr, "---------------------------\n");
                 break;
 
             // daemon options
