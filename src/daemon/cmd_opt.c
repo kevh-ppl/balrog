@@ -233,14 +233,28 @@ void processing_cmd(int argc, char* argv[]) {
                 break;
 
             case cmd_shell_dev:
-                // fprintf(stderr, "devs_paths = %p\n", (void*)devs_paths);
-                // fprintf(stderr, "devs_paths_index => %d", devs_paths_index);
-                // for (int i = 0; i < devs_paths_index; i++) {
-                //     if (write(fd_fifo_user, devs_paths[i], strlen(devs_paths[i])) < 0) {
-                //         fprintf(stderr, "balrog --shell Error writting...");
-                //     }
-                // }
-                // break;
+                fprintf(stderr, "devs_paths = %p\n", (void*)devs_paths);
+                fprintf(stderr, "devs_paths_index => %d", devs_paths_index);
+                char output[4096];
+                output[0] = '\0';
+                int offset = 0;
+
+                for (int i = 0; i < devs_paths_index; i++) {
+                    int written =
+                        snprintf(output + offset, sizeof(output) - offset, "%s\n", devs_paths[i]);
+
+                    if (written < 0 || written >= sizeof(output) - offset) {
+                        // Se llenó el buffer
+                        fprintf(stderr, "balrog --shell: Se llenó el buffer");
+                        break;
+                    }
+
+                    offset += written;
+                }
+
+                if (write(fd_fifo_user, output, offset) < 0) {
+                    fprintf(stderr, "balrog --shell Error writting...");
+                }
                 fprintf(stderr, "---- dumping devs_paths ----\n");
                 for (int i = 0; i < devs_paths_index; i++) {
                     fprintf(stderr, "[%d] ptr=%p\n", i, (void*)devs_paths[i]);
