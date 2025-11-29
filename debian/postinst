@@ -96,7 +96,7 @@ reload_udev_rules
 #postins
 
 if command -v setcap >/dev/null 2>&1; then
-    sudo setcap cap_sys_admin+ep /usr/local/bin/balrog-shell
+    sudo setcap cap_sys_admin+ep /usr/bin/balrog-shell
 fi
 
 # Habilitar y arrancar el servicio systemd

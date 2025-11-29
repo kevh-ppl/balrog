@@ -15,11 +15,9 @@ $(OUTPUT_SETUP): src/helpers/sandbox_setup.c
 
 .PHONY: install
 install: all
-	install -D $(OUTPUT_HELPER) $(DESTDIR)/usr/local/bin/$(OUTPUT_HELPER)
-	install -D $(OUTPUT_SETUP) $(DESTDIR)/usr/local/bin/$(OUTPUT_SETUP)
-	@echo "\nAfter install: give the helper CAP_SYS_ADMIN or make it setuid root:\n"
-	@echo "  sudo setcap cap_sys_admin+ep /usr/local/bin/$(OUTPUT_HELPER)"
-	@echo "  # or (less recommended): sudo chown root:root /usr/local/bin/$(OUTPUT_HELPER) && sudo chmod 4755 /usr/local/bin/$(OUTPUT_HELPER)"
+	install -D $(OUTPUT_HELPER) $(DESTDIR)/usr/bin/$(OUTPUT_HELPER)
+	install -D $(OUTPUT_SETUP) $(DESTDIR)/usr/bin/$(OUTPUT_SETUP)
+	@echo "  sudo setcap cap_sys_admin+ep /usr/bin/$(OUTPUT_HELPER)"
 
 .PHONY: clean
 clean:
