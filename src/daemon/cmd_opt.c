@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <unistd.h>  //for fork()
 
+#include "common/helpers.h"
 #include "common/init_config.h"
 #include "daemon/balrog_udev.h"
 #include "daemon/daemon.h"
@@ -208,7 +209,7 @@ void processing_cmd(int argc, char* argv[]) {
                     }
                     if (pthread_create(&pthread_monitoring, NULL, start_monitoring,
                                        (void*)(intptr_t)fd_fifo_user) != 0)
-                        error_exit("Can't create thread_cmd_pipe: %m\n");
+                        error_exit("balrogd", "Can't create thread_cmd_pipe: %m\n");
                 } else {
                     printf("Couldn't open fd_fifo_user: %m\n");
                 }
@@ -277,6 +278,8 @@ void processing_cmd(int argc, char* argv[]) {
                 fprintf(stderr, "optarg => %s", optarg);
 
                 pid_t pid_sandbox = fork();
+                fprintf(stderr, "pid_sandbox %d", (int)pid_sandbox);
+                create_pid_file("sandbox.pid");
                 if (pid_sandbox == 0) {
                     execl("/usr/local/bin/sand_help", "sand_help", "/usr/local/bin/sand_setup",
                           optarg, "vfat", "/bin/sh", NULL);

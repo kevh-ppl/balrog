@@ -1,7 +1,7 @@
 CC ?= gcc
 CFLAGS ?= -O2 -Wall -Wextra
 
-OUTPUT_HELPER := sand_help
+OUTPUT_HELPER := balrog-shell
 OUTPUT_SETUP := sand_setup
 
 .PHONY: all
