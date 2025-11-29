@@ -48,7 +48,6 @@ const char* help_str = DAEMON_NAME
     "       --pid-file [value]          Set pid file name\n"
     "       --log-file-path [value]     Set log file name\n"
     "       --cm-pipe [value]           Set CMD Pipe name\n"
-    "  -s   --shell <devpath>           Run sandbox for devpath and get an interactive shell\n"
     "  -n   --nodes                     Print devnodes attached"
     "  -p,  --print-udev-vars           Print udev vars for debugging\n"
     "  -e,  --enumerate                 Enumerates all block (storage) devices\n"
@@ -65,7 +64,6 @@ enum {
     cmd_start_monitor = 'm',
     cmd_stop_monitor = 'w',
     cmd_print_udev_vars = 'p',
-    cmd_shell_dev = 's:',
     cmd_print_nodes = 'n',
 
     // daemon options (start from a value outside ASCII range)
@@ -78,7 +76,7 @@ enum {
     cmd_opt_cmd_pipe
 };
 
-static const char* short_opts = "hvemwpns:";
+static const char* short_opts = "hvemwpn";
 static const struct option long_opts[] = {
     {"version", no_argument, NULL, cmd_opt_version},
     {"help", no_argument, NULL, cmd_opt_help},
@@ -86,7 +84,6 @@ static const struct option long_opts[] = {
     {"start-monitor", no_argument, NULL, cmd_start_monitor},
     {"stop-monitor", no_argument, NULL, cmd_stop_monitor},
     {"print-udev-vars", no_argument, NULL, cmd_print_udev_vars},
-    {"shell", required_argument, NULL, cmd_shell_dev},
     {"nodes", no_argument, NULL, cmd_print_nodes},
 
     // daemon options
@@ -268,24 +265,6 @@ void processing_cmd(int argc, char* argv[]) {
                 fprintf(stderr, "---------------------------\n");
                 break;
 
-            case cmd_shell_dev:
-                if (!optarg) {
-                    char* msg = "Missing argument: devnode path </dev/sdx>\n";
-                    write(fd_fifo_user, msg, strlen(msg));
-                }
-                char optarg_cpy[4096];
-                strncpy(optarg_cpy, optarg, sizeof(optarg_cpy) - 1);
-                fprintf(stderr, "optarg => %s", optarg);
-
-                pid_t pid_sandbox = fork();
-                fprintf(stderr, "pid_sandbox %d", (int)pid_sandbox);
-                create_pid_file("sandbox.pid");
-                if (pid_sandbox == 0) {
-                    execl("/usr/local/bin/sand_help", "sand_help", "/usr/local/bin/sand_setup",
-                          optarg, "vfat", "/bin/sh", NULL);
-                }
-                break;
-
             // daemon options
             case cmd_opt_no_chdir:
                 daemon_info.no_chdir = 1;
@@ -364,7 +343,6 @@ static void* cmd_pipe_thread(void* thread_arg) {
         if (bytes_read == -1) error_exit("balrogd", "read CMD_PIPE return -1");
 
         if (bytes_read == 0) {
-            // Fin de archivo: todos los writers cerraron
             close(fd);
             printf("cmd_pipe_thread() => daemon_info.cmd_pipe => %s\n", daemon_info.cmd_pipe);
             fd = open(daemon_info.cmd_pipe, O_RDONLY);
@@ -393,7 +371,4 @@ void init_cmd_line(void* data) {
 
     if (pthread_create(&pthread_cmd_pipe, NULL, cmd_pipe_thread, NULL) != 0)
         error_exit("balrogd", "Can't create thread_cmd_pipe");
-
-    // Here is your code to initialize
-    // start_monitoring();
 }

@@ -35,5 +35,5 @@ int main(int argc, char* argv[]) {
     //     sleep(1);
     // }
     notify_uninit();
-    return EXIT_SUCCESS;  // good job (we interrupted (finished) main loop)
+    return EXIT_SUCCESS;
 }

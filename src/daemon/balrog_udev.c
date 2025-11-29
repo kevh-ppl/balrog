@@ -365,7 +365,6 @@ void* start_monitoring(void* args) {
 
                     write(client_fd, msg, strlen(msg));  // enviar al cliente
 
-                    // sandbox aquí
                     // node = /dev/bus/usb/001/008
                     if (action && strcmp(action, "add") == 0 && exits_sandbox == 0) {
                         // pid_t pid_sandbox = fork();
