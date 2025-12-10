@@ -4,7 +4,8 @@ After=graphical.target
 
 [Service]
 Type=forking
-PIDFile=/var/run/balrogd/balrogd.pid
+#PIDFile=/run/balrogd/balrogd.pid
+GuessMainPID=yes
 ExecStart=/usr/bin/balrogd
 ExecStop=/bin/kill -s SIGINT $MAINPID
 StandardOutput=journal
@@ -15,10 +16,6 @@ User=balrogd
 Group=balrogd
 Restart=on-failure
 RestartSec=10
-# Variables de entorno para acceder al bus de sesión
-Environment=DISPLAY=:0
-Environment=XDG_RUNTIME_DIR=%t
-Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 
 [Install]
 WantedBy=multi-user.target
