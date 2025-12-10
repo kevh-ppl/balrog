@@ -1,3 +1,5 @@
 debian/etc/balrog/balrogd.cnf etc/balrog/balrogd.cnf
 balrog-shell usr/bin
-
+balrogd usr/bin
+balrog usr/bin
+sand_setup usr/bin
