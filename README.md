@@ -14,6 +14,8 @@
 
 ## Debug
 
+Must have installed dev version of libacl, glibc, libnotify and libudev.
+
 ```bash
 git clone https://github.com/kevh-ppl/balrog.git
 cd balrog
@@ -24,7 +26,7 @@ make debug
 
 You may want to use the prebuilt DEB package:
 
-[Download Balrog .deb](https://github.com/kevh-ppl/balrog/releases/download/v2025.11.03-43015bf/balrog_0.0-1_amd64.deb)
+[Download Balrog DEB package](https://github.com/kevh-ppl/balrog/releases/download/0.1.0.v2025.12.12-9e374c2-alpha/balrog_0.1.0.v2025.12.12-9e374c2-alpha_amd64.deb)
 
 ## Roadmap
 
@@ -32,6 +34,6 @@ You may want to use the prebuilt DEB package:
 - [x] USB detection via udev
 - [x] User notifications via libnotify
 - [x] Udev rules to disable automount
-- [ ] Sandboxing USB storage
+- [x] Sandboxing USB storage
 
 Dios, ayúdame.
