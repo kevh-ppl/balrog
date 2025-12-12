@@ -30,14 +30,13 @@ static void die(const char* msg) {
 }
 
 int main(int argc, char** argv) {
-    if (argc < 4) {
-        fprintf(stderr, "USAGE: %s <device> <fstype> [command... ]\n", argv[0]);
+    if (argc < 3) {
+        fprintf(stderr, "USAGE: %s <device> <fstype>\n", argv[0]);
         return 2;
     }
 
     const char* dev = argv[1];
     const char* fstype = argv[2];
-    char** child_argv = &argv[3];
 
     uid_t ruid = getuid();
     gid_t rgid = getgid();
@@ -109,7 +108,8 @@ int main(int argc, char** argv) {
     if (fd == -1) die_errno("create dev placeholder");
     close(fd);
 
-    if (mount(dev, dev_in_root, NULL, MS_BIND, NULL) == -1) die_errno("bind device node");
+    if (mount(dev, dev_in_root, NULL, MS_BIND | MS_RDONLY, NULL) == -1)
+        die_errno("bind device node");
 
     // sand_setup
     char target_sand_setup[PATH_MAX];
