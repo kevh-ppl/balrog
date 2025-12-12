@@ -1,22 +1,27 @@
 {
-    "editor.formatOnSave": true,  // formatea al guardar
-    "[c]": {
-        "editor.defaultFormatter": "ms-vscode.cpptools" // usa clang-format para C
-    },
-    "files.associations": {
-        "*.c": "c",
-        "select.h": "c",
-        "daemon.h": "c",
-        "stdio.h": "c",
-        "stat.h": "c",
-        "cerrno": "c",
-        "signal.h": "c",
-        "cmd_opt.h": "c",
-        "balrog_udev.h": "c",
-        "unistd.h": "c",
-        "file.h": "c",
-        "string.h": "c",
-        "libudev.h": "c",
-        "types.h": "c"
-    }
+  "editor.formatOnSave": true, // formatea al guardar
+  "[c]": {
+    "editor.defaultFormatter": "ms-vscode.cpptools" // usa clang-format para C
+  },
+  "files.associations": {
+    "*.c": "c",
+    "select.h": "c",
+    "daemon.h": "c",
+    "stdio.h": "c",
+    "stat.h": "c",
+    "cerrno": "c",
+    "signal.h": "c",
+    "cmd_opt.h": "c",
+    "balrog_udev.h": "c",
+    "unistd.h": "c",
+    "file.h": "c",
+    "string.h": "c",
+    "libudev.h": "c",
+    "types.h": "c",
+    "notify-features.h": "c",
+    "user_end_monitor.h": "c",
+    "init_config.h": "c",
+    "helpers.h": "c",
+    "sandbox.h": "c"
+  }
 }

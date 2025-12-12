@@ -1,19 +1,21 @@
 [Unit]
-Description=Balrog USB Daemon
+Description=Balrog Daemon
 After=graphical.target
 
 [Service]
 Type=forking
-PIDFIle=/var/run/balrog/balrog.pid
-ExecStart=/usr/bin/balrog
+#PIDFile=/run/balrogd/balrogd.pid
+GuessMainPID=yes
+ExecStart=/usr/bin/balrogd
+ExecStop=/bin/kill -s SIGINT $MAINPID
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=balrogd
+SyslogFacility=daemon
 User=balrogd
 Group=balrogd
 Restart=on-failure
-RestartSec=2
-# Variables de entorno para acceder al bus de sesión
-Environment=DISPLAY=:0
-Environment=XDG_RUNTIME_DIR=%t
-Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target

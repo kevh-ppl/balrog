@@ -1,4 +1,4 @@
-#include "balrog_udev.h"
+#include "daemon/balrog_udev.h"
 
 #include <errno.h>
 #include <glib-2.0/glib.h>
@@ -15,17 +15,20 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#include "cmd_opt.h"
-#include "daemon.h"
+#include "common/helpers.h"
+#include "common/init_config.h"
+#include "daemon/cmd_opt.h"
 
-struct udev *udev = NULL;
-struct udev_enumerate *enumerator = NULL;
+struct udev* udev = NULL;
+struct udev_enumerate* enumerator = NULL;
 struct udev_list_entry *devices = NULL, *dev_list_entry = NULL;
-struct udev_device *device_to_enumerate = NULL;
-struct udev_monitor *monitor = NULL;
+struct udev_device* device_to_enumerate = NULL;
+struct udev_monitor* monitor = NULL;
 pthread_t pthread_monitoring;
 volatile sig_atomic_t keep_monitoring = 1;
 int exit_pipe[2];
+char* devs_paths[50] = {0};
+int devs_paths_index = 0;
 
 int init_udev_context() {
     udev = udev_new();  // declared in enumerate.h
@@ -56,11 +59,11 @@ static int create_enumerator() {
     return 0;
 }
 
-static void increase_buffer_size(size_t offset, size_t *buffer_size, char **info_dev) {
+static void increase_buffer_size(size_t offset, size_t* buffer_size, char** info_dev) {
     printf("Increasing buffer... offset %zu | buffer_size %zu\n", offset, *buffer_size);
     *buffer_size *= 2;
     printf("New buffer size => %zu\n", *buffer_size);
-    char *new_buffer = realloc((void *)*info_dev, *buffer_size);
+    char* new_buffer = realloc((void*)*info_dev, *buffer_size);
     printf("new_buffer %p\n", new_buffer);
     if (!new_buffer) {
         printf("Reallocated?\n");
@@ -73,7 +76,7 @@ static void increase_buffer_size(size_t offset, size_t *buffer_size, char **info
     return;
 }
 
-static void safe_append(char **buf, size_t *offset, size_t *buf_size, const char *fmt, ...) {
+static void safe_append(char** buf, size_t* offset, size_t* buf_size, const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
     while (1) {
@@ -103,7 +106,7 @@ static int fillup_device_list(int fd_fifo_user) {
     }
 
     printf("Creating buffer...\n");
-    char *info_dev = malloc(PIPE_BUF);
+    char* info_dev = malloc(PIPE_BUF);
     if (!info_dev) {
         perror("malloc");
         return -1;
@@ -240,17 +243,17 @@ static int create_udev_usb_monitor() {
         fprintf(stderr, "Udev context is not initialized\n");
         init_udev_context();
     }
-    printf("FROM start_monitoring() -> create_udev_usb_monitor() con &udev: %p\n", (void *)udev);
+    printf("FROM start_monitoring() -> create_udev_usb_monitor() con &udev: %p\n", (void*)udev);
     monitor = udev_monitor_new_from_netlink(udev, "udev");
     if (!monitor) {
         fprintf(stderr, "Failded to create udev monitor\n");
         udev_monitor_unref(monitor);
         return -1;
     }
-    printf("Udev monitor created succesfully at: %p\n", (void *)monitor);
+    printf("Udev monitor created succesfully at: %p\n", (void*)monitor);
     // filter to only get block devices for the monitor
-    if (!udev_monitor_filter_add_match_subsystem_devtype(monitor, "usb", NULL)) {
-        // daemon_error_exit("Failed to add filter for udev monitor\n");
+    if (udev_monitor_filter_add_match_subsystem_devtype(monitor, "block", NULL) != 0) {
+        // error_exit("Failed to add filter for udev monitor\n");
         fprintf(stderr, "Failed to add filter for udev monitor\n");
         printf("Continuing without filter...\n");
     }
@@ -266,7 +269,7 @@ int set_monitor() {
     if (create_udev_usb_monitor() < 0) {
         return -1;
     }
-    printf("udev => %p\n", (void *)udev);
+    printf("udev => %p\n", (void*)udev);
     int enabled_receiving = udev_monitor_enable_receiving(monitor);
     if (enabled_receiving < 0) {
         fprintf(stderr, "Failed to enable receiving on udev monitor\n");
@@ -288,7 +291,7 @@ int set_monitor() {
 Starts monitoring
 This is the task that will be run in monitor_thread
 */
-void *start_monitoring(void *args) {
+void* start_monitoring(void* args) {
     pthread_detach(pthread_self());
     printf("INIT monitoring...\n");
 
@@ -297,34 +300,29 @@ void *start_monitoring(void *args) {
     }
 
     int fd = (intptr_t)args;  // descriptor del cliente o similar
-    if (init_udev_context()) daemon_error_exit("Failed to initialize udev context\n");
+    if (init_udev_context()) error_exit("balrogd", "Failed to initialize udev context\n");
 
     int monitor_fd = set_monitor();
-    if (monitor_fd < 0) daemon_error_exit("Failed to set udev monitor\n");
+    if (monitor_fd < 0) error_exit("balrogd", "Failed to set udev monitor\n");
 
     // Crear socket UNIX
     int sock_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (sock_fd < 0) daemon_error_exit("socket failed\n");
+    if (sock_fd < 0) error_exit("balrogd", "socket failed\n");
 
     struct sockaddr_un addr;
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
     strcpy(addr.sun_path, daemon_info.monitor_socket_file);
     unlink(addr.sun_path);  // borrar si ya existe
-    if (bind(sock_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
-        daemon_error_exit("bind failed\n");
+    if (bind(sock_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0)
+        error_exit("balrogd", "bind failed\n");
     listen(sock_fd, 5);
 
     printf("Esperando conexión del cliente...\n");
     int client_fd = accept(sock_fd, NULL, NULL);
-    if (client_fd < 0) daemon_error_exit("accept failed\n");
+    if (client_fd < 0) error_exit("balrogd", "accept failed\n");
 
-    int fd_monitor_log_file = open(daemon_info.monitor_log_file, O_WRONLY);
-    if (fd_monitor_log_file < 0) {
-        fprintf(stderr, "Error opening monitor log file: %m\n");
-        return NULL;
-    }
-
+    int exits_sandbox = 0;
     while (keep_monitoring) {
         fd_set fds;
         FD_ZERO(&fds);
@@ -344,31 +342,79 @@ void *start_monitoring(void *args) {
         }
 
         if (FD_ISSET(monitor_fd, &fds)) {
-            struct udev_device *dev = udev_monitor_receive_device(monitor);
+            struct udev_device* dev = udev_monitor_receive_device(monitor);
             if (dev) {
-                const char *action = udev_device_get_action(dev);
-                const char *node = udev_device_get_devnode(dev);
-                const char *subsystem = udev_device_get_subsystem(dev);
+                const char* subsystem = udev_device_get_subsystem(dev);
 
-                if (!action) action = "No action detected";
-                if (!node) node = "No node detected yet";
-                if (!subsystem) subsystem = "No subsystem";
+                // Solo enumeramos si es un dispositivo USB
+                if (subsystem && strcmp(subsystem, "block") == 0) {
+                    const char* action = udev_device_get_action(dev);
 
-                char msg[512];
-                snprintf(msg, sizeof(msg), "[%s] %s (%s)\n", action, node, subsystem);
+                    const char* node = udev_device_get_devnode(dev);
 
-                write(fd_monitor_log_file, msg, strlen(msg));
-                write(client_fd, msg, strlen(msg));  // enviar al cliente
+                    if (!action) action = "No action detected";
+                    if (!subsystem) subsystem = "No subsystem";
+                    if (!node) node = "No node detected yet";
 
+                    printf("Subsystem: %s\n", subsystem);
+                    printf("Action: %s\n", action);
+                    printf("Devnode: %s\n", node);
+
+                    char msg[512];
+                    snprintf(msg, sizeof(msg), "[%s] %s (%s)\n", action, node, subsystem);
+
+                    write(client_fd, msg, strlen(msg));  // enviar al cliente
+
+                    // node = /dev/bus/usb/001/008
+                    if (action && strcmp(action, "add") == 0 && exits_sandbox == 0) {
+                        // pid_t pid_sandbox = fork();
+                        // if (pid_sandbox == 0) {
+                        //     execl("/usr/local/bin/sand_help", "sand_help",
+                        //           "/usr/local/bin/sand_setup", node, "vfat", "/bin/sh", NULL);
+                        //     exits_sandbox = 1;
+                        // }
+                        // instead i gotta save the node path into a data structure
+                        if (devs_paths_index < 50) {
+                            if (!node) {
+                                fprintf(stderr, "NULL node\n");
+                                continue;
+                            }
+
+                            fprintf(stderr, "devs_paths_index => %d\n", devs_paths_index);
+                            fprintf(stderr, "node aaa => %s\n", node);
+
+                            size_t len = strlen(node);
+                            fprintf(stderr, "about to malloc %zu bytes\n", len + 1);
+
+                            char* copy = malloc(len + 1);
+                            if (!copy) {
+                                perror("malloc for device path failed");
+                                continue;
+                            }
+                            memcpy(copy, node, len);
+                            copy[len] = '\0';
+
+                            fprintf(stderr, "copy=%p '%s'\n", (void*)copy, copy);
+
+                            devs_paths[devs_paths_index] = copy;
+                            devs_paths_index++;
+
+                            fprintf(stderr, "Dev from monitor => %s | index %d\n",
+                                    devs_paths[devs_paths_index - 1], devs_paths_index - 1);
+                        }
+                    }
+                }
                 udev_device_unref(dev);
             }
         }
     }
 
-    close(fd_monitor_log_file);
+    for (int i = 0; i < devs_paths_index; i++) {
+        free(devs_paths[i]);
+    }
     close(client_fd);
     close(sock_fd);
-    return NULL;
+    return;
 }
 
 /*

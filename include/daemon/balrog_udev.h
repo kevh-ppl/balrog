@@ -10,20 +10,23 @@ extern int exit_pipe[2];
 
 extern pthread_t pthread_monitoring;
 
-extern struct udev *udev;
-extern struct udev_device *device_to_enumerate;  // to enumerate in the for each
-extern struct udev_enumerate *enumerator;
+extern struct udev* udev;
+extern struct udev_device* device_to_enumerate;  // to enumerate in the for each
+extern struct udev_enumerate* enumerator;
 extern struct udev_list_entry *devices, *dev_list_entry;
 
-extern struct udev_monitor *monitor;
+extern struct udev_monitor* monitor;
 
 int init_udev_context();
 
 void do_enumerate(int fd_fifo_user);
 void free_udev_enumerator();
 
-void *start_monitoring();
+void* start_monitoring();
 void stop_monitoring();
+
+extern char* devs_paths[50];
+extern int devs_paths_index;
 
 void free_udev_context();
 

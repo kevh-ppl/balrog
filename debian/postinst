@@ -33,8 +33,8 @@ else
     exit 1
 fi
 
-run=/var/run/balrog/
-log=/var/log/balrog/
+run=/var/run/balrogd/
+log=/var/log/balrogd/
 
 mkdir -p "$run"
 mkdir -p "$log"
@@ -44,8 +44,8 @@ chmod 755 "$run" "$log"
 
 update-icon-caches /usr/share/icons/hicolor
 
-DEFAULT_FILE_PATH="/etc/default/balrog"
-UDEV_RULES_PATH="/lib/udev/rules.d/99-balrog.rules"
+DEFAULT_FILE_PATH="/etc/default/balrogd"
+UDEV_RULES_PATH="/lib/udev/rules.d/99-balrogd.rules"
 
 create_env_file() {
     echo Writing env file
@@ -93,12 +93,18 @@ create_env_file
 create_udev_rules_file
 reload_udev_rules
 
+#postins
+
+if command -v setcap >/dev/null 2>&1; then
+    sudo setcap cap_sys_admin+ep /usr/bin/balrog-shell
+fi
+
 # Habilitar y arrancar el servicio systemd
 if command -v systemctl >/dev/null 2>&1; then
-    balrog -m
     systemctl daemon-reload
     systemctl enable balrog.service
     systemctl start balrog.service || true
+    sudo -u ${SUDO_USER:-${USER:-root}} balrog -m
 fi
 
 exit 0

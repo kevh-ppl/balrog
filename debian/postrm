@@ -1,13 +1,26 @@
 #!/bin/sh
 set -e
 
-if [ -f /etc/default/balrog]; then
+reload_udev_rules() {
+    echo Reloading udev rules
+    if ! udevadm control --reload > /dev/null 2>&1; then
+        echo "Reload fail"
+        echo "You may want try to execute \"udevadm control --reload\" or reboot your system"
+    fi
+    echo done
+}
+
+if [ -f /etc/default/balrog ]; then
     . /etc/default/balrog
 fi
 
 if [ "$1" = "purge" ] || [ "$1" = "remove" ]; then
-    rm -rf /var/run/balrog
-    rm -rf /var/log/balrog
+    rm -rf /var/run/balrogd
+    rm -rf /var/log/balrogd
+    rm -rf /usr/bin/balrog*
+    rm -rf /usr/bin/sand_setup
+    rm -rf /usr/bin/balrog-shell
+
 
     if id -u balrogd >/dev/null 2>&1; then
         userdel -r balrogd || true
@@ -18,14 +31,25 @@ if [ "$1" = "purge" ] || [ "$1" = "remove" ]; then
     fi
 
     # delete balrog udev rules
-    if [ -f "$UDEV_RULES_PATH"]; then
+    if [ -f "$UDEV_RULES_PATH" ]; then
         rm -f "$UDEV_RULES_PATH"
+        reload_udev_rules
     fi
+
+
+    orig_user="${SUDO_USER:-${USER:-root}}"
+
+    user_home=$(getent passwd "$orig_user" | cut -d: -f6)
+
+    if [ -d "$user_home/.balrog/" ]; then
+        rm -rf "$user_home/.balrog/"
+    fi
+
 fi
 
 if [ "$1" = "purge" ]; then
-    rm -rf /var/run/balrog
-    rm -rf /var/log/balrog
+    rm -rf /var/run/balrogd
+    rm -rf /var/log/balrogd
 fi
 
 exit 0
